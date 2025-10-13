@@ -115,4 +115,51 @@ public class AuthService : IAuthService
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(requestDto.NewPassword);
         await _userRepository.UpdateUserAsync(user);
     }
+
+    public async Task<EmailVerificationResponseDto> VerifyEmailAsync(EmailVerificationRequestDto requestDto)
+    {
+        var verification = await _userVerificationService.ValidateAndConsumeAsync(requestDto.VerificationToken, "Email");
+        if (verification == null)
+            return new EmailVerificationResponseDto
+            {
+                IsVerified = false,
+                Message = "Invalid or expired verification token"
+            };
+
+        var user = await _userRepository.GetByIdAsync(verification.UserId);
+        if (user == null)
+            return new EmailVerificationResponseDto
+            {
+                IsVerified = false,
+                Message = "User not found"
+            };
+
+        user.IsVerified = true;
+        await _userRepository.UpdateUserAsync(user);
+
+        return new EmailVerificationResponseDto
+        {
+            IsVerified = true,
+            Message = "Email verified successfully"
+        };
+    }
+
+    public async Task<bool> ResendVerificationEmailAsync(ResendVerificationRequestDto requestDto)
+    {
+        var user = await _userRepository.GetByEmailAsync(requestDto.Email)
+                   ?? throw new InvalidOperationException("User not found");
+
+        if (user.IsVerified)
+            throw new InvalidOperationException("Email is already verified");
+
+        var verification = await _userVerificationService.CreateAsync(user.Id, "Email", TimeSpan.FromHours(24));
+
+        var subject = "Verify Your Email - Hiking Rental Store";
+        var emailTemplate = _emailBuilderService.BuildVerificationEmailTemplate(
+            user.Email, verification.Token, user.FirstName);
+        var body = _emailBuilderService.GenerateEmailBody(emailTemplate);
+
+        await _emailSenderService.SendEmailAsync(user.Email, subject, body);
+        return true;
+    }
 }

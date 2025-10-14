@@ -13,17 +13,20 @@ public class UserService : IUserService
     private readonly IUserContextService _userContextService;
     private readonly IUserRepository _userRepository;
     private readonly IUserVerificationService _userVerificationService;
+    private readonly HttpClient _httpClient;
 
     public UserService(
         IMapper mapper,
         IUserRepository userRepository,
         IUserContextService userContextService,
-        IUserVerificationService userVerificationService)
+        IUserVerificationService userVerificationService,
+        IHttpClientFactory httpClientFactory)
     {
         _mapper = mapper;
         _userRepository = userRepository;
         _userContextService = userContextService;
         _userVerificationService = userVerificationService;
+        _httpClient = httpClientFactory.CreateClient("EmailService");
     }
 
     public async Task<IEnumerable<UserDto>> GetUsers()
@@ -59,16 +62,14 @@ public class UserService : IUserService
             TimeSpan.FromHours(24)
         );
 
-        var subject = "Verify Your Email - Hiking Rental Store";
-        var template = _emailBuilderService.BuildVerificationEmailTemplate(
-            user.Email,
-            verification.Token,
-            user.FirstName
-        );
-        var body = _emailBuilderService.GenerateEmailBody(template);
-
-        await _emailSenderService.SendEmailAsync(user.Email, subject, body);
-
+        var verificationRequest = new
+        {
+            Email = user.Email,
+            VerificationToken = verification.Token,
+            FirstName = user.FirstName
+        };
+        var response = await _httpClient.PostAsJsonAsync("/api/email/send-verification", verificationRequest);
+        response.EnsureSuccessStatusCode();
         return true;
     }
 
@@ -137,15 +138,15 @@ public class UserService : IUserService
         await _userRepository.AddAsync(user);
         await _userRepository.SaveChangesAsync();
 
-        var subject = "Welcome to Hiking Rental Store - Employee Account Created";
-        var template = _emailBuilderService.BuildEmployeeWelcomeEmailTemplate(
-            user.Email,
-            OriginPassword,
-            user.FirstName
-        );
-        var body = _emailBuilderService.GenerateEmailBody(template);
-        await _emailSenderService.SendEmailAsync(user.Email, subject, body);
-
+        var SendEmployeeWelcomeEmailRequest = new
+        {
+            Email = user.Email,
+            Password = OriginPassword,
+            FirstName = user.FirstName
+        };
+        var response = await _httpClient.PostAsJsonAsync("/api/email/send-employee-welcome", SendEmployeeWelcomeEmailRequest);
+        response.EnsureSuccessStatusCode();
+        
         //Send email to user with password setup link
         return _mapper.Map<UserDto>(user);
     }

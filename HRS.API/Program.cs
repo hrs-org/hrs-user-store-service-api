@@ -30,6 +30,11 @@ builder.Services.AddScoped<IUserVerificationRepository, UserVerificationReposito
 builder.Services.AddScoped<IAppConfiguration, AppConfiguration>();
 builder.Services.AddHttpContextAccessor();
 
+builder.Services.AddHttpClient("EmailService", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["EmailEndpoint"]!);
+});
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers(options => { options.Filters.Add<ValidationFilter>(); });

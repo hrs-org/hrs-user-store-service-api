@@ -13,13 +13,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRS.Domain", "HRS.Domain\HR
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRS.Test", "HRS.Test\HRS.Test.csproj", "{FFC1FB37-456D-4C81-9EA2-C2DC309DAADF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{9FA3D6BD-1EC1-3BA5-80CB-CE02773A58D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BE9C424E-7A54-43ED-B367-8EA86AE53504}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -42,5 +41,11 @@ Global
 		{FFC1FB37-456D-4C81-9EA2-C2DC309DAADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FFC1FB37-456D-4C81-9EA2-C2DC309DAADF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FFC1FB37-456D-4C81-9EA2-C2DC309DAADF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {468A2948-DDDC-4769-A062-160ED339724E}
 	EndGlobalSection
 EndGlobal

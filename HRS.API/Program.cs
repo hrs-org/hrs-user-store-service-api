@@ -32,7 +32,7 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHttpClient("EmailService", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["EmailEndpoint"]!);
+    client.BaseAddress = new Uri(builder.Configuration["EmailService"]!);
 });
 
 // Add services to the container.
@@ -118,7 +118,11 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseSwagger();
-if (app.Environment.IsDevelopment()) app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "HRS API v1");
+    c.RoutePrefix = "swagger"; 
+});
 
 app.UseHttpsRedirection();
 
@@ -129,4 +133,22 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var dbContext = services.GetRequiredService<AppDbContext>();
+        dbContext.Database.Migrate();
+        logger.LogInformation("✅ Database migration applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "❌ Database migration failed.");
+    }
+}
+
 app.Run();
+

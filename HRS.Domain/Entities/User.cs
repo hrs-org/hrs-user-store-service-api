@@ -27,10 +27,12 @@ public class User
 
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
+    public int? StoreId { get; set; }
 
     [ForeignKey(nameof(CreatedBy))] public virtual User? CreatedByUser { get; set; }
 
     [ForeignKey(nameof(UpdatedBy))] public virtual User? UpdatedByUser { get; set; }
+    [ForeignKey(nameof(StoreId))] public virtual Store? Store { get; set; }
 
     // Navigation Properties
     public virtual ICollection<UserSession> Sessions { get; set; } = new List<UserSession>();

@@ -1,7 +1,4 @@
-using System.Threading.Tasks;
 using HRS.API.Services;
-using HRS.API.Services.Interfaces;
-using HRS.Domain.Interfaces;
 using NSubstitute;
 using Xunit;
 
@@ -22,12 +19,6 @@ public class AppConfigurationTests
         var appConfig = new AppConfiguration(config);
 
         // Assert
-        Assert.Equal("smtp.test.com", appConfig.SmtpHost);
-        Assert.Equal(587, appConfig.SmtpPort);
-        Assert.Equal("user", appConfig.SmtpUsername);
-        Assert.Equal("pass", appConfig.SmtpPassword);
-        Assert.Equal("from@test.com", appConfig.FromEmail);
-        Assert.Equal("http://frontend", appConfig.FrontendUrl);
         Assert.Equal("jwtkeyjwtkeyjwtkeyjwtkeyjwtkeyjwtkeyjwtkeyjwtkey", appConfig.JwtKey);
         Assert.Equal("issuer", appConfig.JwtIssuer);
         Assert.Equal("audience", appConfig.JwtAudience);

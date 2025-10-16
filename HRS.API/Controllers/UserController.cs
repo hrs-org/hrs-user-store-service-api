@@ -18,7 +18,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")]//find rights to call api
     public async Task<ActionResult<List<UserDto>>> GetUsersAsync()
     {
         var users = await _userService.GetUsers();

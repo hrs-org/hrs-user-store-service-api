@@ -1,7 +1,6 @@
 using HRS.API.Common;
-using HRS.API.Contracts.DTOs;
+using HRS.Shared.Core.Dtos;
 using HRS.API.Contracts.DTOs.Auth;
-using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -66,7 +65,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> GetCurrentUserAsync()
     {
         var res = await _userContextService.GetUserDtoAsync();
-        return Ok(ApiResponse<UserDto>.OkResponse(res, "Get current user successful"));
+        return Ok(ApiResponse<UserResponseDto>.OkResponse(res, "Get current user successful"));
     }
 
     [HttpPost("change-password")]

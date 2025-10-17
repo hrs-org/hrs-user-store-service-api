@@ -2,8 +2,8 @@ using AutoMapper;
 using HRS.API.Contracts.DTOs.Store;
 using HRS.API.Services.Interfaces;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
 using HRS.Domain.Interfaces;
+using HRS.Shared.Core.Enums;
 
 namespace HRS.API.Services;
 

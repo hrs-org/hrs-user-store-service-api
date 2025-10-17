@@ -1,5 +1,5 @@
-using HRS.API.Contracts.DTOs.User;
 using HRS.Domain.Entities;
+using HRS.Shared.Core.Dtos;
 
 namespace HRS.API.Services.Interfaces;
 
@@ -7,7 +7,7 @@ public interface IUserContextService
 {
     Task<User> GetUserAsync();
 
-    Task<UserDto> GetUserDtoAsync();
+    Task<UserResponseDto> GetUserDtoAsync();
 
     Task<int> GetUserIdAsync();
 }

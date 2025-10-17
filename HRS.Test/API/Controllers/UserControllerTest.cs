@@ -1,6 +1,6 @@
 using FluentAssertions;
 using HRS.API.Controllers;
-using HRS.API.Contracts.DTOs;
+using HRS.Shared.Core.Dtos;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;

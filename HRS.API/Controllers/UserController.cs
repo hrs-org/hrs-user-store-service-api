@@ -1,4 +1,4 @@
-using HRS.API.Contracts.DTOs;
+using HRS.Shared.Core.Dtos;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -19,22 +19,22 @@ public class UsersController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = "Admin")]//find rights to call api
-    public async Task<ActionResult<List<UserDto>>> GetUsersAsync()
+    public async Task<ActionResult<List<UserResponseDto>>> GetUsersAsync()
     {
         var users = await _userService.GetUsers();
-        return Ok(ApiResponse<List<UserDto>>.OkResponse(users.ToList()));
+        return Ok(ApiResponse<List<UserResponseDto>>.OkResponse(users.ToList()));
     }
 
     [HttpGet("{id:int}")]
     [Authorize]
-    public async Task<ActionResult<UserDto>> GetUserAsync(int id)
+    public async Task<ActionResult<UserResponseDto>> GetUserAsync(int id)
     {
         var user = await _userService.GetUserById(id);
-        return Ok(ApiResponse<UserDto>.OkResponse(user));
+        return Ok(ApiResponse<UserResponseDto>.OkResponse(user));
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<UserDto>> Register([FromBody] RegisterDto dto)
+    public async Task<ActionResult<bool>> Register([FromBody] RegisterDto dto)
     {
         var res = await _userService.Register(dto);
         return Ok(ApiResponse<bool>.OkResponse(res, "Registration successful"));
@@ -42,19 +42,19 @@ public class UsersController : ControllerBase
 
     [HttpGet("employees")]
     [Authorize(Roles = "Manager,Admin")]
-    public async Task<ActionResult<List<UserDto>>> GetEmployees()
+    public async Task<ActionResult<List<UserResponseDto>>> GetEmployees()
     {
         var employeeList = await _userService.GetEmployees();
-        return Ok(ApiResponse<List<UserDto>>.OkResponse(employeeList));
+        return Ok(ApiResponse<List<UserResponseDto>>.OkResponse(employeeList));
     }
 
     [HttpPut("employees")]
     [Authorize(Roles = "Manager,Admin")]
-    public async Task<ActionResult<UserDto>> UpdateEmployee([FromBody] UpdateEmployeeDto dto)
+    public async Task<ActionResult<UserResponseDto>> UpdateEmployee([FromBody] UpdateEmployeeDto dto)
     {
         var updatedEmployee = await _userService.UpdateEmployee(dto);
         if (updatedEmployee == null) return NotFound();
-        return Ok(ApiResponse<UserDto>.OkResponse(updatedEmployee));
+        return Ok(ApiResponse<UserResponseDto>.OkResponse(updatedEmployee));
     }
 
     [HttpDelete("employees/{id:int}")]
@@ -68,10 +68,10 @@ public class UsersController : ControllerBase
 
     [HttpPost("employees/add")]
     [Authorize(Roles = "Manager,Admin")]
-    public async Task<ActionResult<UserDto>> CreateNewEmployee([FromBody] RegisterEmployeeDetailDto dto)
+    public async Task<ActionResult<UserResponseDto>> CreateNewEmployee([FromBody] RegisterEmployeeDetailDto dto)
     {
         var createdUser = await _userService.CreateNewEmployee(dto);
-        return Ok(ApiResponse<UserDto>.OkResponse(createdUser, "Employee Created successfully"));
+        return Ok(ApiResponse<UserResponseDto>.OkResponse(createdUser, "Employee Created successfully"));
     }
 
     [HttpDelete("{id:int}")]

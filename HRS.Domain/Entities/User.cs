@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace HRS.Domain.Entities;

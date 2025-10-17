@@ -2,8 +2,9 @@ using AutoMapper;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services.Interfaces;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using HRS.Domain.Interfaces;
+using HRS.Shared.Core.Dtos;
 
 namespace HRS.API.Services;
 
@@ -29,16 +30,16 @@ public class UserService : IUserService
         _httpClient = httpClientFactory.CreateClient("EmailService");
     }
 
-    public async Task<IEnumerable<UserDto>> GetUsers()
+    public async Task<IEnumerable<UserResponseDto>> GetUsers()
     {
         var users = await _userRepository.GetAllAsync();
-        return _mapper.Map<IEnumerable<UserDto>>(users);
+        return _mapper.Map<IEnumerable<UserResponseDto>>(users);
     }
 
-    public async Task<UserDto> GetUserById(int id)
+    public async Task<UserResponseDto> GetUserById(int id)
     {
         var user = await _userRepository.GetByIdAsync(id);
-        return user == null ? throw new InvalidOperationException("User not found") : _mapper.Map<UserDto>(user);
+        return user == null ? throw new InvalidOperationException("User not found") : _mapper.Map<UserResponseDto>(user);
     }
 
     public async Task<bool> Register(RegisterDto dto)
@@ -81,14 +82,14 @@ public class UserService : IUserService
         return true;
     }
 
-    public async Task<List<UserDto>> GetEmployees()
+    public async Task<List<UserResponseDto>> GetEmployees()
     {
         var user = await _userContextService.GetUserAsync();
         var employee = await _userRepository.GetAllEmployee(user.Role == UserRole.Admin);
-        return _mapper.Map<List<UserDto>>(employee);
+        return _mapper.Map<List<UserResponseDto>>(employee);
     }
 
-    public async Task<UserDto?> UpdateEmployee(UpdateEmployeeDto dto)
+    public async Task<UserResponseDto?> UpdateEmployee(UpdateEmployeeDto dto)
     {
         var editor = await _userContextService.GetUserAsync();
         var employee = await _userRepository.GetByIdAsync(dto.Id);
@@ -111,7 +112,7 @@ public class UserService : IUserService
         }
 
         await _userRepository.SaveChangesAsync();
-        return _mapper.Map<UserDto>(employee);
+        return _mapper.Map<UserResponseDto>(employee);
     }
 
     public async Task<bool> DeleteEmployee(int id)
@@ -124,7 +125,7 @@ public class UserService : IUserService
         return true;
     }
 
-    public async Task<UserDto> CreateNewEmployee(RegisterEmployeeDetailDto dto)
+    public async Task<UserResponseDto> CreateNewEmployee(RegisterEmployeeDetailDto dto)
     {
         var user = _mapper.Map<User>(dto);
         var editor = await _userContextService.GetUserAsync();
@@ -148,6 +149,6 @@ public class UserService : IUserService
         response.EnsureSuccessStatusCode();
         
         //Send email to user with password setup link
-        return _mapper.Map<UserDto>(user);
+        return _mapper.Map<UserResponseDto>(user);
     }
 }

@@ -1,10 +1,10 @@
 using FluentValidation;
-using HRS.API.Contracts.DTOs.User;
+using HRS.Shared.Core.Dtos;
 using HRS.Domain.Interfaces;
 namespace HRS.API.Validators.User;
 
 
-public class UserDtoValidators : AbstractValidator<UserDto>
+public class UserDtoValidators : AbstractValidator<UserResponseDto>
 {
     public UserDtoValidators(IUserRepository userRepository)
     {

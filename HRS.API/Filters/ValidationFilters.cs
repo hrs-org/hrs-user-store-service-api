@@ -1,5 +1,5 @@
 using FluentValidation;
-using HRS.API.Contracts.DTOs;
+using HRS.Shared.Core.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 

@@ -1,5 +1,5 @@
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using HRS.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

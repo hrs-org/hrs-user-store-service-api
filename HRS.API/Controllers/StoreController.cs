@@ -1,4 +1,4 @@
-using HRS.API.Contracts.DTOs;
+using HRS.Shared.Core.Dtos;
 using HRS.API.Contracts.DTOs.Store;
 using HRS.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;

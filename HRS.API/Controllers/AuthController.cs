@@ -1,7 +1,9 @@
 using HRS.API.Common;
-using HRS.Shared.Core.Dtos;
+using HRS.API.Contracts.DTOs;
 using HRS.API.Contracts.DTOs.Auth;
+using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services.Interfaces;
+using HRS.Shared.Core.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -66,6 +68,20 @@ public class AuthController : ControllerBase
     {
         var res = await _userContextService.GetUserDtoAsync();
         return Ok(ApiResponse<UserResponseDto>.OkResponse(res, "Get current user successful"));
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmailAsync([FromBody] EmailVerificationRequestDto requestDto)
+    {
+        var res = await _authService.VerifyEmailAsync(requestDto);
+        return Ok(ApiResponse<EmailVerificationResponseDto>.OkResponse(res, "Email verification completed"));
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerificationAsync([FromBody] ResendVerificationRequestDto requestDto)
+    {
+        var res = await _authService.ResendVerificationEmailAsync(requestDto);
+        return Ok(ApiResponse<bool>.OkResponse(res, "If your email exists, a verification link has been sent."));
     }
 
     [HttpPost("change-password")]

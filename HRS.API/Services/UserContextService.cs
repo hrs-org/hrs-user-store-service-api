@@ -36,7 +36,10 @@ public class UserContextService : IUserContextService
         return user ?? throw new UnauthorizedAccessException("User not found");
     }
 
-    public async Task<UserResponseDto> GetUserDtoAsync() => _mapper.Map<UserResponseDto>(await GetUserAsync());
+    public async Task<UserResponseDto> GetUserDtoAsync()
+    {
+       return _mapper.Map<UserResponseDto>(await GetUserAsync());
+    } 
 
     public async Task<int> GetUserIdAsync() => (await GetUserAsync()).Id;
 }

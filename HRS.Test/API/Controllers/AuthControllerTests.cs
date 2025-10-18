@@ -3,7 +3,7 @@ using HRS.API.Contracts.DTOs.Auth;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Controllers;
 using HRS.API.Services.Interfaces;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;

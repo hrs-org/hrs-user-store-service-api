@@ -34,7 +34,7 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHttpClient("EmailService", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["EmailService"]!);
+    client.BaseAddress = new Uri(builder.Configuration["EmailEndpoint"]!);
 });
 
 // Add services to the container.

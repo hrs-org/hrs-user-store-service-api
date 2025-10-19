@@ -25,7 +25,7 @@ permissions:
 env:
     AZURE_RESOURCE_GROUP: rg-hrsm-uat
     AKS_CLUSTER_NAME: hrsm-uat-aks
-    NAMESPACE: user
+    NAMESPACE: users
     DEPLOYMENT_NAME: hrs-user-service
     SERVICE_NAME: hrs-user-service
 
@@ -114,13 +114,29 @@ jobs:
                   echo "🚀 Deploying to AKS..."
                   kubectl apply -f k8s/deployment-final.yaml
 
+                  # Wait for deployment to be fully registered
+                  echo "Waiting for deployment to be registered..."
+                  for i in {1..10}; do
+                    if kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} &>/dev/null; then
+                      echo "✅ Deployment registered"
+                      break
+                    fi
+                    echo "Waiting... ($i/10)"
+                    sleep 2
+                  done
+
                   # Annotate deployment with metadata
-                  kubectl annotate deployment/${{ env.DEPLOYMENT_NAME }} \
-                    -n ${{ env.NAMESPACE }} \
-                    deployment.kubernetes.io/version="${{ github.event.inputs.version }}" \
-                    deployment.kubernetes.io/deployed-by="${{ github.actor }}" \
-                    deployment.kubernetes.io/deployed-at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-                    --overwrite
+                  if kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} &>/dev/null; then
+                    kubectl annotate deployment/${{ env.DEPLOYMENT_NAME }} \
+                      -n ${{ env.NAMESPACE }} \
+                      deployment.kubernetes.io/version="${{ github.event.inputs.version }}" \
+                      deployment.kubernetes.io/deployed-by="${{ github.actor }}" \
+                      deployment.kubernetes.io/deployed-at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+                      --overwrite
+                    echo "✅ Deployment annotated"
+                  else
+                    echo "⚠️ Could not find deployment to annotate (deployment may still be initializing)"
+                  fi
 
             - name: Wait for deployment rollout
               run: |

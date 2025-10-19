@@ -116,6 +116,10 @@ builder.Services.AddCors(options =>
     );
 });
 
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -134,6 +138,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map health check endpoints
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
 
 using (var scope = app.Services.CreateScope())
 {

@@ -137,7 +137,7 @@ jobs:
         environment: uat
         outputs:
             version: ${{ steps.version.outputs.version }}
-            image-tag: ${{ steps.version.outputs.image_tag }}
+            image-tag: ${{ steps.version.outputs.image-tag }}
 
         steps:
             - name: Checkout code
@@ -167,7 +167,7 @@ jobs:
                   fi
 
                   echo "version=$VERSION" >> $GITHUB_OUTPUT
-                  echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+                  echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
@@ -191,7 +191,7 @@ jobs:
                       VERSION=${{ steps.version.outputs.version }}
                       GITHUB_TOKEN=${{ secrets.PACKAGES_READ_TOKEN }}
                   tags: |
-                      ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${{ steps.version.outputs.image_tag }}
+                      ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${{ steps.version.outputs.image-tag }}
                       ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:latest
                       ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${{ github.sha }}
                   labels: |
@@ -205,7 +205,7 @@ jobs:
                   mkdir -p artifacts
                   cat > artifacts/deployment-info.txt <<EOF
                   VERSION=${{ steps.version.outputs.version }}
-                  IMAGE_TAG=${{ steps.version.outputs.image_tag }}
+                  IMAGE_TAG=${{ steps.version.outputs.image-tag }}
                   COMMIT_SHA=${{ github.sha }}
                   BRANCH=${{ github.ref_name }}
                   BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
@@ -240,9 +240,18 @@ jobs:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
 
             - name: Pull and run Docker image
+              env:
+                  IMAGE_TAG: ${{ needs.docker-build.outputs.image-tag }}
               run: |
                   az acr login --name ${{ secrets.ACR_NAME }}
-                  IMAGE_TAG="${{ needs.docker-build.outputs.image_tag }}"
+
+                  echo "Image tag from docker-build: ${IMAGE_TAG}"
+
+                  if [ -z "$IMAGE_TAG" ]; then
+                    echo "ERROR: IMAGE_TAG is empty!"
+                    echo "Using 'latest' as fallback"
+                    IMAGE_TAG="latest"
+                  fi
 
                   echo "Pulling image: ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${IMAGE_TAG}"
                   docker pull ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${IMAGE_TAG}

@@ -4,6 +4,7 @@ using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services.Interfaces;
 using HRS.Domain.Entities;
 using HRS.Domain.Interfaces;
+using HRS.Shared.Core.Dtos;
 
 namespace HRS.API.Services;
 
@@ -35,7 +36,10 @@ public class UserContextService : IUserContextService
         return user ?? throw new UnauthorizedAccessException("User not found");
     }
 
-    public async Task<UserDto> GetUserDtoAsync() => _mapper.Map<UserDto>(await GetUserAsync());
+    public async Task<UserResponseDto> GetUserDtoAsync()
+    {
+       return _mapper.Map<UserResponseDto>(await GetUserAsync());
+    } 
 
     public async Task<int> GetUserIdAsync() => (await GetUserAsync()).Id;
 }

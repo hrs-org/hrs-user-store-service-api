@@ -10,17 +10,20 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IUserSessionService _userSessionService;
     private readonly IUserVerificationService _userVerificationService;
+    private readonly HttpClient _httpClient;
 
     public AuthService(
         IUserRepository userRepository,
         IUserContextService userContextService,
         IUserSessionService userSessionService,
-        IUserVerificationService userVerificationService)
+        IUserVerificationService userVerificationService,
+        IHttpClientFactory httpClientFactory)
     {
         _userRepository = userRepository;
         _userContextService = userContextService;
         _userSessionService = userSessionService;
         _userVerificationService = userVerificationService;
+        _httpClient = httpClientFactory.CreateClient("EmailService");
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto requestDto)
@@ -89,11 +92,14 @@ public class AuthService : IAuthService
         if (user == null)
             throw new InvalidOperationException("If the email is registered, a password reset link will be sent.");
         var verification = await _userVerificationService.CreateAsync(user.Id, "PasswordReset", TimeSpan.FromHours(1));
-
-        var subject = "Reset Your Password - Hiking Rental Store";
-        var emailTemplate = _emailBuilderService.BuildPasswordResetEmailTemplate(user.Email, verification.Token, user.FirstName);
-        var body = _emailBuilderService.GenerateEmailBody(emailTemplate);
-        await _emailSenderService.SendEmailAsync(user.Email, subject, body);
+        var passwordResetRequest = new
+        {
+            Email = user.Email,
+            ResetToken = verification.Token,
+            FirstName = user.FirstName
+        };
+        var response = await _httpClient.PostAsJsonAsync("/api/email/send-password-reset", passwordResetRequest);
+        response.EnsureSuccessStatusCode();
     }
 
     public async Task ResetPasswordAsync(ResetPasswordRequestDto requestDto)
@@ -154,12 +160,14 @@ public class AuthService : IAuthService
 
         var verification = await _userVerificationService.CreateAsync(user.Id, "Email", TimeSpan.FromHours(24));
 
-        var subject = "Verify Your Email - Hiking Rental Store";
-        var emailTemplate = _emailBuilderService.BuildVerificationEmailTemplate(
-            user.Email, verification.Token, user.FirstName);
-        var body = _emailBuilderService.GenerateEmailBody(emailTemplate);
-
-        await _emailSenderService.SendEmailAsync(user.Email, subject, body);
+        var verificationRequest = new
+        {
+            Email = user.Email,
+            VerificationToken = verification.Token,
+            FirstName = user.FirstName
+        };
+        var response = await _httpClient.PostAsJsonAsync("/api/email/send-verification", verificationRequest);
+        response.EnsureSuccessStatusCode();
         return true;
     }
 }

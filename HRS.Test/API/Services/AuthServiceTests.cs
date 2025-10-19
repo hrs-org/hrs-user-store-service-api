@@ -1,5 +1,5 @@
+using System.Net;
 using HRS.API.Contracts.DTOs.Auth;
-using HRS.API.Models;
 using HRS.API.Services;
 using HRS.API.Services.Interfaces;
 using HRS.Domain.Entities;
@@ -15,6 +15,8 @@ public class AuthServiceTests
     private readonly IUserRepository _userRepository;
     private readonly IUserSessionService _userSessionService;
     private readonly IUserVerificationService _userVerificationService;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly HttpClient _httpClient;
 
     public AuthServiceTests()
     {
@@ -22,7 +24,14 @@ public class AuthServiceTests
         _userContextService = Substitute.For<IUserContextService>();
         _userSessionService = Substitute.For<IUserSessionService>();
         _userVerificationService = Substitute.For<IUserVerificationService>();
-        _service = new AuthService(_userRepository, _userContextService, _userSessionService, _userVerificationService);
+        _httpClientFactory = Substitute.For<IHttpClientFactory>();
+        
+        // 创建模拟的 HttpClient
+        var handler = new FakeHttpMessageHandler();
+        _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+        _httpClientFactory.CreateClient("EmailService").Returns(_httpClient);
+        
+        _service = new AuthService(_userRepository, _userContextService, _userSessionService, _userVerificationService, _httpClientFactory);
     }
 
     [Fact]
@@ -147,15 +156,13 @@ public class AuthServiceTests
 
         _userRepository.GetByEmailAsync(request.Email).Returns(user);
         _userVerificationService.CreateAsync(user.Id, "PasswordReset", Arg.Any<TimeSpan>()).Returns(verification);
-        _emailBuilderService.BuildPasswordResetEmailTemplate(user.Email, verification.Token, user.FirstName)
-            .Returns(new EmailTemplate());
-        _emailBuilderService.GenerateEmailBody(Arg.Any<EmailTemplate>()).Returns("<html>Reset email</html>");
+        // HttpClient 会被 FakeHttpMessageHandler 处理
 
         // Act
         await _service.ForgotPasswordAsync(request);
 
         // Assert
-        await _emailSenderService.Received(1).SendEmailAsync(user.Email, Arg.Any<string>(), Arg.Any<string>());
+        await _userVerificationService.Received(1).CreateAsync(user.Id, "PasswordReset", Arg.Any<TimeSpan>());
     }
 
     [Fact]
@@ -167,7 +174,6 @@ public class AuthServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ForgotPasswordAsync(request));
-        await _emailSenderService.DidNotReceive().SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     #endregion
@@ -292,4 +298,11 @@ public class AuthServiceTests
     }
 
     #endregion
+    private class FakeHttpMessageHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        }
+    }
 }

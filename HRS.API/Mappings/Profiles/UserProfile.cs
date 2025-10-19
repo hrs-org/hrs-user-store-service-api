@@ -1,7 +1,8 @@
 using AutoMapper;
 using HRS.API.Contracts.DTOs.User;
+using HRS.Shared.Core.Dtos;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 
 namespace HRS.API.Mappings.Profiles;
 
@@ -9,7 +10,7 @@ public class UserProfile : Profile
 {
     public UserProfile()
     {
-        CreateMap<User, UserDto>()
+        CreateMap<User, UserResponseDto>()
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()));
 
         CreateMap<RegisterDto, User>()

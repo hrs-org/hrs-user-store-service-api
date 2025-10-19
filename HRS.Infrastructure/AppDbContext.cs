@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; } = default!;
     public DbSet<UserSession> UserSessions { get; set; } = default!;
     public DbSet<UserVerification> UserVerifications { get; set; } = default!;
+    public DbSet<Store> Stores { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

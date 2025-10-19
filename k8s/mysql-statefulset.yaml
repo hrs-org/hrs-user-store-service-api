@@ -1,0 +1,119 @@
+---
+# MySQL Secret (TEMPLATE - Replace passwords before applying!)
+apiVersion: v1
+kind: Secret
+metadata:
+    name: mysql-user-secret
+    namespace: users
+type: Opaque
+stringData:
+    # IMPORTANT: Change these passwords before deploying!
+    root-password: "38EBD2537A6D4194958B4E83fd1D6!"
+    user-password: "38EBD2537A6D4194958B4E83fd1D6!"
+    database: "hrsdb"
+    username: "hrsuser"
+
+---
+# MySQL Service (Headless for StatefulSet)
+apiVersion: v1
+kind: Service
+metadata:
+    name: mysql-user-db
+    namespace: users
+    labels:
+        app: mysql-user-db
+spec:
+    ports:
+        - port: 3306
+          name: mysql
+          targetPort: 3306
+    clusterIP: None # Headless service for StatefulSet
+    selector:
+        app: mysql-user-db
+
+---
+# MySQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: mysql-user-db
+    namespace: users
+    labels:
+        app: mysql-user-db
+spec:
+    serviceName: mysql-user-db
+    replicas: 1
+    selector:
+        matchLabels:
+            app: mysql-user-db
+    template:
+        metadata:
+            labels:
+                app: mysql-user-db
+        spec:
+            containers:
+                - name: mysql
+                  image: mysql:8.0
+                  ports:
+                      - containerPort: 3306
+                        name: mysql
+                  env:
+                      - name: MYSQL_ROOT_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: mysql-user-secret
+                                key: root-password
+                      - name: MYSQL_DATABASE
+                        valueFrom:
+                            secretKeyRef:
+                                name: mysql-user-secret
+                                key: database
+                      - name: MYSQL_USER
+                        valueFrom:
+                            secretKeyRef:
+                                name: mysql-user-secret
+                                key: username
+                      - name: MYSQL_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: mysql-user-secret
+                                key: user-password
+                  volumeMounts:
+                      - name: mysql-data
+                        mountPath: /var/lib/mysql
+                  livenessProbe:
+                      exec:
+                          command:
+                              - sh
+                              - -c
+                              - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  readinessProbe:
+                      exec:
+                          command:
+                              - sh
+                              - -c
+                              - "mysql -u root -p${MYSQL_ROOT_PASSWORD} -e 'SELECT 1'"
+                      initialDelaySeconds: 10
+                      periodSeconds: 5
+                      timeoutSeconds: 3
+                      failureThreshold: 3
+                  resources:
+                      requests:
+                          memory: "256Mi"
+                          cpu: "250m"
+                      limits:
+                          memory: "512Mi"
+                          cpu: "500m"
+    volumeClaimTemplates:
+        - metadata:
+              name: mysql-data
+          spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: managed-csi # Azure Disk
+              resources:
+                  requests:
+                      storage: 5Gi

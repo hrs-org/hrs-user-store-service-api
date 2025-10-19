@@ -34,7 +34,7 @@ public class StoreService : IStoreService
         var store = await _storeRepository.GetByIdAsync(id);
         if (store == null)
             throw new KeyNotFoundException("Store not found");
-        
+
         return _mapper.Map<StoreDto>(store);
     }
 
@@ -49,7 +49,7 @@ public class StoreService : IStoreService
         var store = await _storeRepository.GetByUserIdAsync(userId);
         if (store == null)
             throw new KeyNotFoundException("Store not found for this user");
-        
+
         return _mapper.Map<StoreDto>(store);
     }
 

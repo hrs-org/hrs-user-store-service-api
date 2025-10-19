@@ -47,15 +47,13 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Set environment to Production
-ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:8080
-
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
 USER appuser
 
-# Set environment variable to listen on port 80
-ENV ASPNETCORE_URLS=http://+:80
+# Set environment variable to listen on port 8080 (non-privileged port)
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "HRS.API.dll"]

@@ -21,13 +21,11 @@ spec:
                 - name: hrs-user-service
                   image: __ACR_NAME__.azurecr.io/hrs-user-service:__IMAGE_TAG__
                   ports:
-                      - containerPort: 80
+                      - containerPort: 8080
                         name: http
                   env:
                       - name: ASPNETCORE_ENVIRONMENT
                         value: "Production"
-                      - name: ASPNETCORE_URLS
-                        value: "http://+:80"
                       # Database Connection
                       - name: ConnectionStrings__DefaultConnection
                         value: "__DB_CONNECTION_STRING__"
@@ -44,7 +42,7 @@ spec:
                   livenessProbe:
                       httpGet:
                           path: /health/live
-                          port: 80
+                          port: 8080
                       initialDelaySeconds: 30
                       periodSeconds: 10
                       timeoutSeconds: 5
@@ -52,7 +50,7 @@ spec:
                   readinessProbe:
                       httpGet:
                           path: /health/ready
-                          port: 80
+                          port: 8080
                       initialDelaySeconds: 10
                       periodSeconds: 5
                       timeoutSeconds: 3
@@ -80,7 +78,7 @@ spec:
     type: ClusterIP
     ports:
         - port: 80
-          targetPort: 80
+          targetPort: 8080
           protocol: TCP
           name: http
     selector:

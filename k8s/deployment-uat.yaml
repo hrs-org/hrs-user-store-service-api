@@ -39,6 +39,9 @@ spec:
                       # CORS Configuration
                       - name: AllowedOrigins
                         value: "__ALLOWED_ORIGINS__"
+                      # Service Discovery - Email Service
+                      - name: EmailEndpoint
+                        value: "__EMAIL_SERVICE_ENDPOINT__"
                   livenessProbe:
                       httpGet:
                           path: /health/live

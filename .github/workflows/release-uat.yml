@@ -102,7 +102,8 @@ jobs:
                   sed "s|__JWT_ISSUER__|${{ secrets.JWT_ISSUER || 'https://auth.hrs.com' }}|g" | \
                   sed "s|__JWT_AUDIENCE__|${{ secrets.JWT_AUDIENCE || 'https://hrs-api' }}|g" | \
                   sed "s|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g" | \
-                  sed "s|__ALLOWED_ORIGINS__|${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}|g" \
+                  sed "s|__ALLOWED_ORIGINS__|${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}|g" | \
+                  sed "s|__EMAIL_SERVICE_ENDPOINT__|${{ secrets.EMAIL_SERVICE_ENDPOINT || 'http://localhost:5001' }}|g" \
                   > k8s/deployment-final.yaml
 
                   # Show the final manifest for debugging (mask sensitive values)

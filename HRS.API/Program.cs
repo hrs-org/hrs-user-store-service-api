@@ -117,8 +117,7 @@ builder.Services.AddCors(options =>
 });
 
 // Add health checks
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>("database");
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

@@ -38,8 +38,8 @@ public class UserContextService : IUserContextService
 
     public async Task<UserResponseDto> GetUserDtoAsync()
     {
-       return _mapper.Map<UserResponseDto>(await GetUserAsync());
-    } 
+        return _mapper.Map<UserResponseDto>(await GetUserAsync());
+    }
 
     public async Task<int> GetUserIdAsync() => (await GetUserAsync()).Id;
 }

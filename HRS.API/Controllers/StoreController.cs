@@ -29,7 +29,7 @@ public class StoreController : ControllerBase
         var store = await _storeService.GetStoreByUserIdAsync(userId);
         return Ok(ApiResponse<StoreDto>.OkResponse(store));
     }
-    
+
     [HttpGet]
     public async Task<ActionResult> GetAllStores([FromQuery] int? userId)
     {

@@ -147,7 +147,7 @@ public class UserService : IUserService
         };
         var response = await _httpClient.PostAsJsonAsync("/api/email/send-employee-welcome", SendEmployeeWelcomeEmailRequest);
         response.EnsureSuccessStatusCode();
-        
+
         //Send email to user with password setup link
         return _mapper.Map<UserResponseDto>(user);
     }

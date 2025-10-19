@@ -28,11 +28,11 @@ public class UserServiceTests
         _userContextService = Substitute.For<IUserContextService>();
         _userVerificationService = Substitute.For<IUserVerificationService>();
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
-        
+
         var handler = new FakeHttpMessageHandler();
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
         _httpClientFactory.CreateClient("EmailService").Returns(_httpClient);
-        
+
         _userService = new UserService(_mapper, _userRepository, _userContextService, _userVerificationService, _httpClientFactory);
     }
 
@@ -184,7 +184,7 @@ public class UserServiceTests
         var dto = new RegisterDto { Email = "test@hrs.com", Password = "ValidPass123!", FirstName = "Test", LastName = "User" };
         var user = new User { Id = 1, Email = dto.Email, FirstName = dto.FirstName, LastName = dto.LastName };
         var verification = new UserVerification { Token = "token" };
-        
+
         _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
         _mapper.Map<User>(dto).Returns(user);
         _userVerificationService.CreateAsync(user.Id, "Email", Arg.Any<TimeSpan>()).Returns(verification);
@@ -360,7 +360,7 @@ public class UserServiceTests
 
         // Assert
         Assert.NotNull(user.PasswordHash);
-        Assert.True(user.PasswordHash.StartsWith("$2")); // BCrypt hash
+        Assert.StartsWith("$2", user.PasswordHash); // BCrypt hash
     }
 
     [Fact]
@@ -369,17 +369,17 @@ public class UserServiceTests
         // Arrange
         var dto = new RegisterEmployeeDetailDto { FirstName = "X", LastName = "Y", Email = "x@y.com", Role = "Employee" };
         _mapper.Map<User>(dto).Returns(new User());
-        _userContextService.GetUserAsync().Returns((User?)null);
+        _userContextService.GetUserAsync()!.Returns((User?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => _userService.CreateNewEmployee(dto));
     }
 }
 
-    public class FakeHttpMessageHandler : HttpMessageHandler
+public class FakeHttpMessageHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        }
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+    }
 }

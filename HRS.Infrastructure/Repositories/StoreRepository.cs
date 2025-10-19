@@ -15,16 +15,16 @@ public class StoreRepository : CrudRepository<Store>, IStoreRepository
         var user = await _db.Users
             .Include(u => u.Store)
             .FirstOrDefaultAsync(u => u.Id == userId);
-        
+
         return user?.Store;
     }
 
     public async Task<Store?> GetByNameAsync(string name)
         => await _db.Stores.FirstOrDefaultAsync(s => s.Name == name);
 
-    public async Task<bool> IsNameUniqueAsync(string name) 
+    public async Task<bool> IsNameUniqueAsync(string name)
         => !await _db.Stores.AnyAsync(s => s.Name == name);
 
-    public async Task<bool> IsIdUniqueAsync(int id) 
+    public async Task<bool> IsIdUniqueAsync(int id)
         => !await _db.Stores.AnyAsync(s => s.Id == id);
 }

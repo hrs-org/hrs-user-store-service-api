@@ -1,0 +1,87 @@
+---
+# HRS User Store Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: hrs-user-service
+    namespace: users
+    labels:
+        app: hrs-user-service
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: hrs-user-service
+    template:
+        metadata:
+            labels:
+                app: hrs-user-service
+        spec:
+            containers:
+                - name: hrs-user-service
+                  image: __ACR_NAME__.azurecr.io/hrs-user-service:__IMAGE_TAG__
+                  ports:
+                      - containerPort: 80
+                        name: http
+                  env:
+                      - name: ASPNETCORE_ENVIRONMENT
+                        value: "Production"
+                      - name: ASPNETCORE_URLS
+                        value: "http://+:80"
+                      # Database Connection
+                      - name: ConnectionStrings__DefaultConnection
+                        value: "__DB_CONNECTION_STRING__"
+                      # JWT Configuration
+                      - name: JwtSettings__Issuer
+                        value: "__JWT_ISSUER__"
+                      - name: JwtSettings__Audience
+                        value: "__JWT_AUDIENCE__"
+                      - name: JwtSettings__SecretKey
+                        value: "__JWT_SECRET_KEY__"
+                      # CORS Configuration
+                      - name: AllowedOrigins
+                        value: "__ALLOWED_ORIGINS__"
+                  livenessProbe:
+                      httpGet:
+                          path: /health/live
+                          port: 80
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  readinessProbe:
+                      httpGet:
+                          path: /health/ready
+                          port: 80
+                      initialDelaySeconds: 10
+                      periodSeconds: 5
+                      timeoutSeconds: 3
+                      failureThreshold: 3
+                  resources:
+                      requests:
+                          memory: "256Mi"
+                          cpu: "250m"
+                      limits:
+                          memory: "512Mi"
+                          cpu: "500m"
+            imagePullSecrets:
+                - name: acr-secret
+
+---
+# HRS User Store Service
+apiVersion: v1
+kind: Service
+metadata:
+    name: hrs-user-service
+    namespace: users
+    labels:
+        app: hrs-user-service
+spec:
+    type: ClusterIP
+    ports:
+        - port: 80
+          targetPort: 80
+          protocol: TCP
+          name: http
+    selector:
+        app: hrs-user-service

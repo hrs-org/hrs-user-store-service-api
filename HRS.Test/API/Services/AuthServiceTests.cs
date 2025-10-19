@@ -25,12 +25,12 @@ public class AuthServiceTests
         _userSessionService = Substitute.For<IUserSessionService>();
         _userVerificationService = Substitute.For<IUserVerificationService>();
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
-        
+
         // 创建模拟的 HttpClient
         var handler = new FakeHttpMessageHandler();
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
         _httpClientFactory.CreateClient("EmailService").Returns(_httpClient);
-        
+
         _service = new AuthService(_userRepository, _userContextService, _userSessionService, _userVerificationService, _httpClientFactory);
     }
 

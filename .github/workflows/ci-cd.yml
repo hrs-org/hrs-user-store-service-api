@@ -37,6 +37,8 @@ jobs:
 
             - name: Authenticate with GitHub Packages
               run: |
+                  # Remove existing source if present, then add it
+                  dotnet nuget remove source github 2>/dev/null || true
                   dotnet nuget add source --username ${{ github.actor }} \
                     --password ${{ secrets.PACKAGES_READ_TOKEN }} \
                     --store-password-in-clear-text \
@@ -76,6 +78,8 @@ jobs:
 
             - name: Authenticate with GitHub Packages
               run: |
+                  # Remove existing source if present, then add it
+                  dotnet nuget remove source github 2>/dev/null || true
                   dotnet nuget add source --username ${{ github.actor }} \
                     --password ${{ secrets.PACKAGES_READ_TOKEN }} \
                     --store-password-in-clear-text \
@@ -104,6 +108,8 @@ jobs:
 
             - name: Authenticate with GitHub Packages
               run: |
+                  # Remove existing source if present, then add it
+                  dotnet nuget remove source github 2>/dev/null || true
                   dotnet nuget add source --username ${{ github.actor }} \
                     --password ${{ secrets.PACKAGES_READ_TOKEN }} \
                     --store-password-in-clear-text \

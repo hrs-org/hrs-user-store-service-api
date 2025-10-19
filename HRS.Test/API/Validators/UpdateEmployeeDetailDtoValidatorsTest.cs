@@ -103,7 +103,7 @@ public class UpdateEmployeeDetailDtoValidatorsTest
             FirstName = "KRIT",
             LastName = "",
             Email = "used2@mail.com",
-            Role = HRS.Domain.Enums.UserRole.Employee
+            Role = HRS.Shared.Core.Enums.UserRole.Employee
         };
         _userRepository.GetByIdAsync(1).Returns(existingUser);
 
@@ -131,7 +131,7 @@ public class UpdateEmployeeDetailDtoValidatorsTest
             FirstName = "KRIT",
             LastName = "",
             Email = "used2@mail.com",
-            Role = HRS.Domain.Enums.UserRole.Employee
+            Role = HRS.Shared.Core.Enums.UserRole.Employee
         };
         _userRepository.GetByIdAsync(1).Returns(existingUser);
 
@@ -158,7 +158,7 @@ public class UpdateEmployeeDetailDtoValidatorsTest
             FirstName = "KRIT",
             LastName = "",
             Email = "used@mail.com",
-            Role = HRS.Domain.Enums.UserRole.Employee
+            Role = HRS.Shared.Core.Enums.UserRole.Employee
         };
         _userRepository.GetByIdAsync(1).Returns(existingUser);
 

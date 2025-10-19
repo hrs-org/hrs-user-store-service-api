@@ -3,10 +3,11 @@ using AutoMapper;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using HRS.Domain.Interfaces;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
+using HRS.Shared.Core.Dtos;
 
 namespace HRS.Test.API.Services;
 
@@ -122,7 +123,7 @@ public class UserContextServiceTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        var userDto = new UserDto
+        var userDto = new UserResponseDto
         {
             Id = userId,
             FirstName = "Test",
@@ -131,7 +132,7 @@ public class UserContextServiceTests
             Role = nameof(UserRole.Admin)
         };
         _userRepository.GetByIdAsync(userId).Returns(user);
-        _mapper.Map<UserDto>(user).Returns(userDto);
+        _mapper.Map<UserResponseDto>(user).Returns(userDto);
 
         // Act
         var result = await _mockContextService.GetUserDtoAsync();

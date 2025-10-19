@@ -4,9 +4,10 @@ using HRS.API.Contracts.DTOs.User;
 using HRS.API.Services;
 using HRS.API.Services.Interfaces;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using HRS.Domain.Interfaces;
 using NSubstitute;
+using HRS.Shared.Core.Dtos;
 
 namespace HRS.Test.API.Services;
 
@@ -40,9 +41,9 @@ public class UserServiceTests
     {
         // Arrange
         var users = new List<User> { new() { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com" } };
-        var userDtos = new List<UserDto> { new() { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" } };
+        var userDtos = new List<UserResponseDto> { new() { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" } };
         _userRepository.GetAllAsync().Returns(users);
-        _mapper.Map<IEnumerable<UserDto>>(users).Returns(userDtos);
+        _mapper.Map<IEnumerable<UserResponseDto>>(users).Returns(userDtos);
 
         // Act
         var result = await _userService.GetUsers();
@@ -56,9 +57,9 @@ public class UserServiceTests
     {
         // Arrange
         var user = new User { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com" };
-        var userDto = new UserDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
+        var userDto = new UserResponseDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
         _userRepository.GetByIdAsync(1).Returns(user);
-        _mapper.Map<UserDto>(user).Returns(userDto);
+        _mapper.Map<UserResponseDto>(user).Returns(userDto);
 
         // Act
         var result = await _userService.GetUserById(1);
@@ -98,7 +99,7 @@ public class UserServiceTests
         // Arrange
         var user = new User { Id = 1, Role = UserRole.Admin };
         var employees = new List<User> { new() { Id = 2, Role = UserRole.Employee } };
-        var employeeDtos = new List<UserDto>
+        var employeeDtos = new List<UserResponseDto>
         {
             new()
             {
@@ -111,7 +112,7 @@ public class UserServiceTests
         };
         _userContextService.GetUserAsync().Returns(user);
         _userRepository.GetAllEmployee(true).Returns(employees);
-        _mapper.Map<List<UserDto>>(employees).Returns(employeeDtos);
+        _mapper.Map<List<UserResponseDto>>(employees).Returns(employeeDtos);
 
         // Act
         var result = await _userService.GetEmployees();
@@ -239,10 +240,10 @@ public class UserServiceTests
         var editor = new User { Id = 99, Role = UserRole.Admin };
         var employee = new User { Id = 1, Role = UserRole.Employee };
         var dto = new UpdateEmployeeDto { Id = 1, Role = "Manager", FirstName = "F", LastName = "L", Email = "e@x.com" };
-        var respond = new UserDto { Id = 1, Role = "Manager", FirstName = "F", LastName = "L", Email = "e@x.com" };
+        var respond = new UserResponseDto { Id = 1, Role = "Manager", FirstName = "F", LastName = "L", Email = "e@x.com" };
         _userContextService.GetUserAsync().Returns(editor);
         _userRepository.GetByIdAsync(dto.Id).Returns(employee);
-        _mapper.Map<UserDto>(Arg.Any<User>()).Returns(respond);
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(respond);
 
         var result = await _userService.UpdateEmployee(dto);
 
@@ -288,7 +289,7 @@ public class UserServiceTests
         };
         var user = new User { Id = 4 };
         var editor = new User { Id = 99, Role = UserRole.Admin };
-        var userDto = new UserDto
+        var userDto = new UserResponseDto
         {
             Id = 4,
             FirstName = "New",
@@ -299,8 +300,7 @@ public class UserServiceTests
 
         _mapper.Map<User>(dto).Returns(user);
         _userContextService.GetUserAsync().Returns(editor);
-        _mapper.Map<UserDto>(user).Returns(userDto);
-        // HttpClient 会被 FakeHttpMessageHandler 处理
+        _mapper.Map<UserResponseDto>(user).Returns(userDto);
 
         var result = await _userService.CreateNewEmployee(dto);
 
@@ -319,14 +319,14 @@ public class UserServiceTests
         var dto = new RegisterEmployeeDetailDto { FirstName = "New", LastName = "Emp", Email = "new@e.com", Role = "Employee" };
         var user = new User { Id = 10 };
         var editor = new User { Id = 99, Role = UserRole.Admin };
-        var mappedDto = new UserDto { Id = 10, FirstName = "New", LastName = "Emp", Email = "new@e.com", Role = "Employee" };
+        var mappedDto = new UserResponseDto { Id = 10, FirstName = "New", LastName = "Emp", Email = "new@e.com", Role = "Employee" };
 
         _mapper.Map<User>(dto).Returns(user);
         _userContextService.GetUserAsync().Returns(editor);
         _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
         _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
-        _mapper.Map<UserDto>(user).Returns(mappedDto);
-        // HttpClient 会被 FakeHttpMessageHandler 处理
+        _mapper.Map<UserResponseDto>(user).Returns(mappedDto);
+
 
         // Act
         var result = await _userService.CreateNewEmployee(dto);
@@ -353,7 +353,7 @@ public class UserServiceTests
         _userContextService.GetUserAsync().Returns(editor);
         _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
         _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
-        _mapper.Map<UserDto>(user).Returns(new UserDto { FirstName = "P", LastName = "T", Email = "p@t.com", Role = "Employee" });
+        _mapper.Map<UserResponseDto>(user).Returns(new UserResponseDto { FirstName = "P", LastName = "T", Email = "p@t.com", Role = "Employee" });
 
         // Act
         await _userService.CreateNewEmployee(dto);

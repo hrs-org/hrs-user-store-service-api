@@ -23,7 +23,7 @@ public class UsersControllerTests
     public async Task GetUsersAsync_ShouldReturnOk_WithUsers()
     {
         // Arrange
-        var users = new List<UserDto> { new UserDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" } };
+        var users = new List<UserResponseDto> { new UserResponseDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" } };
         _userService.GetUsers().Returns(users);
 
         // Act
@@ -36,7 +36,7 @@ public class UsersControllerTests
     [Fact]
     public async Task GetUserAsync_ShouldReturnOk_WhenUserExists()
     {
-        var user = new UserDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
+        var user = new UserResponseDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
         _userService.GetUserById(1).Returns(user);
 
         var result = await _controller.GetUserAsync(1);
@@ -66,7 +66,7 @@ public class UsersControllerTests
     [Fact]
     public async Task GetEmployees_ShouldReturnOk_WhenHasEmployees()
     {
-        var employees = new List<UserDto> { new UserDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" } };
+        var employees = new List<UserResponseDto> { new UserResponseDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" } };
         _userService.GetEmployees().Returns(employees);
 
         var result = await _controller.GetEmployees();
@@ -77,7 +77,7 @@ public class UsersControllerTests
     [Fact]
     public async Task GetEmployees_ShouldReturnNotFound_WhenEmpty()
     {
-        _userService.GetEmployees().Returns(new List<UserDto>());
+        _userService.GetEmployees().Returns(new List<UserResponseDto>());
 
         var result = await _controller.GetEmployees();
 
@@ -88,7 +88,7 @@ public class UsersControllerTests
     public async Task UpdateEmployee_ShouldReturnOk_WhenUpdated()
     {
         var dto = new UpdateEmployeeDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
-        var respond = new UserDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
+        var respond = new UserResponseDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
         _userService.UpdateEmployee(dto).Returns(respond);
 
         var result = await _controller.UpdateEmployee(dto);
@@ -100,7 +100,7 @@ public class UsersControllerTests
     public async Task UpdateEmployee_ShouldReturnNotFound_WhenFail()
     {
         var dto = new UpdateEmployeeDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
-        var respond = new UserDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
+        var respond = new UserResponseDto { Id = 1, FirstName = "A", LastName = "B", Email = "a@b.com", Role = "Employee" };
         _userService.UpdateEmployee(dto).Returns(respond);
         var updatedto = new UpdateEmployeeDto { Id = 3, FirstName = "krit", LastName = "tt", Email = "a@bee.com", Role = "Employee" };
 
@@ -133,13 +133,13 @@ public class UsersControllerTests
     public async Task CreateNewEmployee_ShouldReturnCreated_WhenSuccess()
     {
         var dto = new RegisterEmployeeDetailDto { FirstName = "Alice", LastName = "Wonder", Email = "alice@wonder.com", Role = "Employee" };
-        var created = new UserDto { Id = 100, FirstName = "Alice", LastName = "Wonder", Email = "alice@wonder.com", Role = "Employee" };
+        var created = new UserResponseDto { Id = 100, FirstName = "Alice", LastName = "Wonder", Email = "alice@wonder.com", Role = "Employee" };
         _userService.CreateNewEmployee(dto).Returns(created);
 
         var result = await _controller.CreateNewEmployee(dto);
 
         result.Result.Should().BeOfType<OkObjectResult>();
-        var createdRes = result.Result.As<OkObjectResult>().Value as ApiResponse<UserDto>;
+        var createdRes = result.Result.As<OkObjectResult>().Value as ApiResponse<UserResponseDto>;
         createdRes!.Success.Should().BeTrue();
         createdRes.Data.Should().Be(created);
     }

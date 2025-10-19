@@ -3,7 +3,7 @@ using System.Security.Claims;
 using HRS.API.Services;
 using HRS.API.Services.Interfaces;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Enums;
 using HRS.Domain.Interfaces;
 using NSubstitute;
 

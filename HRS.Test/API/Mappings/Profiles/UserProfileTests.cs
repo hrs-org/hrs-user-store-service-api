@@ -3,7 +3,8 @@ using FluentAssertions;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Mappings.Profiles;
 using HRS.Domain.Entities;
-using HRS.Domain.Enums;
+using HRS.Shared.Core.Dtos;
+using HRS.Shared.Core.Enums;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -39,7 +40,7 @@ public class UserProfileTests
             PasswordHash = "hash"
         };
 
-        var dto = _mapper.Map<UserDto>(user);
+        var dto = _mapper.Map<UserResponseDto>(user);
 
         dto.Id.Should().Be(1);
         dto.FirstName.Should().Be("John");

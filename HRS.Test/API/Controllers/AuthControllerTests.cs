@@ -3,6 +3,7 @@ using HRS.API.Contracts.DTOs.Auth;
 using HRS.API.Contracts.DTOs.User;
 using HRS.API.Controllers;
 using HRS.API.Services.Interfaces;
+using HRS.Shared.Core.Dtos;
 using HRS.Shared.Core.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -93,7 +94,7 @@ public class AuthControllerTests
     public async Task GetCurrentUserAsync_ReturnsOkWithUserDto()
     {
         // Arrange
-        var userDto = new UserDto { Id = 1, FirstName = "Test", LastName = "User", Email = "test@hrs.com", Role = nameof(UserRole.Admin) };
+        var userDto = new UserResponseDto { Id = 1, FirstName = "Test", LastName = "User", Email = "test@hrs.com", Role = nameof(UserRole.Admin) };
         _userContextService.GetUserDtoAsync().Returns(userDto);
 
         // Act
@@ -103,7 +104,7 @@ public class AuthControllerTests
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
         var apiResponse = okResult.Value as dynamic;
-        ((UserDto)apiResponse?.Data!).Should().BeEquivalentTo(userDto);
+        ((UserResponseDto)apiResponse?.Data!).Should().BeEquivalentTo(userDto);
     }
 
     [Fact]

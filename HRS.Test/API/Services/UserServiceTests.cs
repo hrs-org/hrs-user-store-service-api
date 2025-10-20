@@ -97,7 +97,7 @@ public class UserServiceTests
     public async Task GetEmployees_ReturnsMappedEmployeeDtos()
     {
         // Arrange
-        var user = new User { Id = 1, Role = UserRole.Admin };
+        var user = new User { Id = 1, Role = UserRole.Admin,StoreId=1 };
         var employees = new List<User> { new() { Id = 2, Role = UserRole.Employee } };
         var employeeDtos = new List<UserResponseDto>
         {
@@ -107,11 +107,11 @@ public class UserServiceTests
                 Role = "Employee",
                 FirstName = "Test",
                 LastName = "Name",
-                Email = "testname@email.com"
+                Email = "testname@email.com",
             }
         };
         _userContextService.GetUserAsync().Returns(user);
-        _userRepository.GetAllEmployee(true).Returns(employees);
+        _userRepository.GetAllEmployee(user.StoreId,true).Returns(employees);
         _mapper.Map<List<UserResponseDto>>(employees).Returns(employeeDtos);
 
         // Act

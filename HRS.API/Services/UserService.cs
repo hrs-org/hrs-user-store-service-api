@@ -133,6 +133,7 @@ public class UserService : IUserService
         user.CreatedAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
         user.UpdatedBy = editor.Id;
+        user.StoreId = editor.StoreId;
         user.IsVerified = true;
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(OriginPassword);
 

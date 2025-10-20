@@ -85,7 +85,7 @@ public class UserService : IUserService
     public async Task<List<UserResponseDto>> GetEmployees()
     {
         var user = await _userContextService.GetUserAsync();
-        var employee = await _userRepository.GetAllEmployee(user.Role == UserRole.Admin);
+        var employee = await _userRepository.GetAllEmployee(user.StoreId,user.Role == UserRole.Admin);
         return _mapper.Map<List<UserResponseDto>>(employee);
     }
 
@@ -133,6 +133,7 @@ public class UserService : IUserService
         user.CreatedAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
         user.UpdatedBy = editor.Id;
+        user.StoreId = editor.StoreId;
         user.IsVerified = true;
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(OriginPassword);
 

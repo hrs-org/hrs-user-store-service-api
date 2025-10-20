@@ -26,9 +26,9 @@ public class UserRepository : CrudRepository<User>, IUserRepository
         await _db.SaveChangesAsync();
     }
 
-    public async Task<List<User>> GetAllEmployee(bool includeManagers = false)
+    public async Task<List<User>> GetAllEmployee(int? storeId,bool includeManagers = false)
     {
-        return await _db.Users.Where(u => includeManagers
+        return await _db.Users.Where(u=> u.StoreId==storeId && includeManagers
             ? u.Role == UserRole.Manager ||
               u.Role == UserRole.Employee
             : u.Role == UserRole.Employee).ToListAsync();

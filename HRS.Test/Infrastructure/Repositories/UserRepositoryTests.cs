@@ -94,13 +94,13 @@ public class UserRepositoryTests
         using var dbContext = CreateDbContext(dbName);
         var repository = new UserRepository(dbContext);
         dbContext.Users.AddRange(
-            new User { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee, PasswordHash = "123456" ,StoreId = 1 },
-            new User { Id = 2, FirstName = "Jaseper", LastName = "Shen", Email = "test2@mail.com", Role = UserRole.Manager, PasswordHash = "123456",StoreId=1 }
+            new User { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee, PasswordHash = "123456", StoreId = 1 },
+            new User { Id = 2, FirstName = "Jaseper", LastName = "Shen", Email = "test2@mail.com", Role = UserRole.Manager, PasswordHash = "123456", StoreId = 1 }
         );
         await dbContext.SaveChangesAsync();
 
         // Act
-        var employees = await repository.GetAllEmployee(1,false);
+        var employees = await repository.GetAllEmployee(1, false);
 
         // Assert
         Assert.Single(employees);

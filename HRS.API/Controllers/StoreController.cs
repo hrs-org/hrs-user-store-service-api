@@ -23,7 +23,7 @@ public class StoreController : ControllerBase
         return Ok(ApiResponse<StoreDto>.OkResponse(store));
     }
 
-    [HttpGet("user/{userId:int}")]
+    [HttpGet("users/{userId:int}")]
     public async Task<ActionResult<StoreDto>> GetStoreByUserId(int userId)
     {
         var store = await _storeService.GetStoreByUserIdAsync(userId);

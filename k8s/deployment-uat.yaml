@@ -30,11 +30,11 @@ spec:
                       - name: ConnectionStrings__DefaultConnection
                         value: "__DB_CONNECTION_STRING__"
                       # JWT Configuration
-                      - name: JwtSettings__Issuer
+                      - name: Jwt__Issuer
                         value: "__JWT_ISSUER__"
-                      - name: JwtSettings__Audience
+                      - name: Jwt__Audience
                         value: "__JWT_AUDIENCE__"
-                      - name: JwtSettings__SecretKey
+                      - name: Jwt__Key
                         value: "__JWT_SECRET_KEY__"
                       # CORS Configuration
                       - name: AllowedOrigins

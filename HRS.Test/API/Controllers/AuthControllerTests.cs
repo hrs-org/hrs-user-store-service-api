@@ -221,4 +221,50 @@ public class AuthControllerTests
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => _controller.ResetPasswordAsync(requestDto));
     }
+
+    [Fact]
+    public async Task VerifyEmailAsync_ReturnsOkWithResponse()
+    {
+        // Arrange
+        var requestDto = new EmailVerificationRequestDto
+        {
+            Email = "user@test.com",
+            VerificationToken = "valid-token"
+        };
+        var responseDto = new EmailVerificationResponseDto
+        {
+            IsVerified = true,
+            Message = "Email verified successfully"
+        };
+        _authService.VerifyEmailAsync(requestDto).Returns(responseDto);
+
+        // Act
+        var result = await _controller.VerifyEmailAsync(requestDto);
+
+        // Assert
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        var apiResponse = okResult!.Value as dynamic;
+        ((EmailVerificationResponseDto)apiResponse?.Data!).Should().BeEquivalentTo(responseDto);
+    }
+
+    [Fact]
+    public async Task ResendVerificationAsync_ReturnsOk_WhenServiceReturnsTrue()
+    {
+        // Arrange
+        var requestDto = new ResendVerificationRequestDto
+        {
+            Email = "user@test.com"
+        };
+        _authService.ResendVerificationEmailAsync(requestDto).Returns(true);
+
+        // Act
+        var result = await _controller.ResendVerificationAsync(requestDto);
+
+        // Assert
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        var apiResponse = okResult!.Value as dynamic;
+        ((bool)apiResponse?.Data!).Should().BeTrue();
+    }
 }

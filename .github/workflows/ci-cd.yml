@@ -330,6 +330,12 @@ jobs:
               run: |
                   az acr login --name ${{ secrets.ACR_NAME }}
 
+                  # Support both possible output names from docker-build job
+                  IMAGE_TAG="${{ needs.docker-build.outputs.image-tag }}"
+                  if [ -z "$IMAGE_TAG" ]; then
+                    IMAGE_TAG="${{ needs.docker-build.outputs.image_tag }}"
+                  fi
+
                   echo "Image tag from docker-build: ${IMAGE_TAG}"
 
                   if [ -z "$IMAGE_TAG" ]; then
@@ -338,11 +344,13 @@ jobs:
                     IMAGE_TAG="latest"
                   fi
 
-                  echo "Pulling image: ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${IMAGE_TAG}"
-                  docker pull ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${IMAGE_TAG}
+                  IMAGE_REPO="${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+
+                  echo "Pulling image: $IMAGE_REPO"
+                  docker pull "$IMAGE_REPO"
 
                   echo "Starting container..."
-                  docker run -d -p 5000:80 --name hrs-user-service \
+                  docker run -d -p 5000:80 --name ${{ env.IMAGE_NAME }} \
                     -e ASPNETCORE_ENVIRONMENT=Production \
                     -e ConnectionStrings__DefaultConnection="${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}" \
                     -e Jwt__Key="${{ secrets.JWT_SECRET_KEY }}" \
@@ -350,7 +358,7 @@ jobs:
                     -e Jwt__Audience="HRSUsers" \
                     -e AllowedOrigins="${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}" \
                     -e EmailEndpoint="http://localhost:5001" \
-                    ${{ secrets.ACR_NAME }}.azurecr.io/hrs-payment-service:${IMAGE_TAG}
+                    "$IMAGE_REPO"
 
                   echo "Waiting for application to start..."
                   sleep 20
@@ -359,7 +367,7 @@ jobs:
                   docker ps -a
 
                   echo "Container logs:"
-                  docker logs hrs-user-service
+                  docker logs ${{ env.IMAGE_NAME }} || true
 
                   echo "Testing health endpoint:"
                   curl -f http://localhost:5000/health || echo "Health endpoint not available"

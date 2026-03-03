@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Secret
 metadata:
     name: mysql-user-secret
-    namespace: users
+    namespace: uat
 type: Opaque
 stringData:
     # IMPORTANT: Change these passwords before deploying!
@@ -19,7 +19,7 @@ apiVersion: v1
 kind: Service
 metadata:
     name: mysql-user-db
-    namespace: users
+    namespace: uat
     labels:
         app: mysql-user-db
 spec:
@@ -37,7 +37,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
     name: mysql-user-db
-    namespace: users
+    namespace: uat
     labels:
         app: mysql-user-db
 spec:

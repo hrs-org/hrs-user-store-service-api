@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: hrs-user-service
-    namespace: users
+    namespace: uat
     labels:
         app: hrs-user-service
 spec:
@@ -74,7 +74,7 @@ apiVersion: v1
 kind: Service
 metadata:
     name: hrs-user-service
-    namespace: users
+    namespace: uat
     labels:
         app: hrs-user-service
 spec:

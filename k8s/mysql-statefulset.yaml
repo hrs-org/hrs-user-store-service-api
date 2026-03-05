@@ -96,9 +96,8 @@ spec:
                               - ALL # Drop all then add back needed ones
                           add:
                               - CHOWN # File ownership changes
-                              - SETGID # Required for MySQL
-                              - SETUID # Required for MySQL
-                              - DAC_OVERRIDE # MySQL needs this
+                              - SETGID # Required for MySQL privilege management
+                              - SETUID # Required for MySQL privilege management
                   volumeMounts:
                       - name: mysql-data
                         mountPath: /var/lib/mysql

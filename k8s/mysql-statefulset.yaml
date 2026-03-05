@@ -51,6 +51,13 @@ spec:
             labels:
                 app: mysql-user-db
         spec:
+            # SNYK-CC-K8S-6: Add security context at pod level
+            securityContext:
+                runAsUser: 10999 # MySQL user (high UID to avoid host clash)
+                runAsGroup: 10999 # MySQL group
+                fsGroup: 10999 # MySQL group
+                seccompProfile:
+                    type: RuntimeDefault
             containers:
                 - name: mysql
                   image: mysql:8.0
@@ -78,6 +85,20 @@ spec:
                             secretKeyRef:
                                 name: mysql-user-secret
                                 key: user-password
+                  # SNYK-CC-K8S-9, 8, 42: Add container security context (databases need some capabilities)
+                  securityContext:
+                      allowPrivilegeEscalation: false # SNYK-CC-K8S-8
+                      privileged: false # SNYK-CC-K8S-9
+                      runAsNonRoot: true # SNYK-CC-K8S-10
+                      capabilities:
+                          drop:
+                              - NET_RAW # SNYK-CC-K8S-41
+                              - ALL # Drop all then add back needed ones
+                          add:
+                              - CHOWN # File ownership changes
+                              - SETGID # Required for MySQL
+                              - SETUID # Required for MySQL
+                              - DAC_OVERRIDE # MySQL needs this
                   volumeMounts:
                       - name: mysql-data
                         mountPath: /var/lib/mysql
@@ -105,9 +126,11 @@ spec:
                       requests:
                           memory: "256Mi"
                           cpu: "250m"
+                          ephemeral-storage: "2Gi"
                       limits:
                           memory: "512Mi"
                           cpu: "500m"
+                          ephemeral-storage: "5Gi"
     volumeClaimTemplates:
         - metadata:
               name: mysql-data

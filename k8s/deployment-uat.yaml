@@ -17,9 +17,17 @@ spec:
             labels:
                 app: hrs-user-service
         spec:
+            # SNYK-CC-K8S-6: Add security context at pod level
+            securityContext:
+                runAsNonRoot: true
+                runAsUser: 10007 # High UID to avoid host conflicts
+                fsGroup: 10007
+                seccompProfile:
+                    type: RuntimeDefault
             containers:
                 - name: hrs-user-service
                   image: __ACR_NAME__.azurecr.io/hrs-user-service:__IMAGE_TAG__
+                  imagePullPolicy: Always
                   ports:
                       - containerPort: 8080
                         name: http
@@ -42,6 +50,22 @@ spec:
                       # Service Discovery - Email Service
                       - name: EmailEndpoint
                         value: "__EMAIL_SERVICE_ENDPOINT__"
+                  # SNYK-CC-K8S-9, 10, 11, 8, 42: Add container security context
+                  securityContext:
+                      allowPrivilegeEscalation: false # SNYK-CC-K8S-8
+                      privileged: false # SNYK-CC-K8S-9
+                      runAsNonRoot: true # SNYK-CC-K8S-10
+                      runAsUser: 10007 # SNYK-CC-K8S-10 (high UID)
+                      readOnlyRootFilesystem: true # SNYK-CC-K8S-6
+                      capabilities:
+                          drop:
+                              - ALL # SNYK-CC-K8S-11, 42
+                  # Add volume for writable directories (needed with readOnlyRootFilesystem)
+                  volumeMounts:
+                      - name: tmp
+                        mountPath: /tmp
+                      - name: aspnet-tmp
+                        mountPath: /app/.aspnet
                   livenessProbe:
                       httpGet:
                           path: /health/live
@@ -62,9 +86,19 @@ spec:
                       requests:
                           memory: "128Mi"
                           cpu: "100m"
+                          ephemeral-storage: "512Mi"
                       limits:
                           memory: "256Mi"
                           cpu: "250m"
+                          ephemeral-storage: "1Gi"
+            # Define temporary volumes for read-only filesystem
+            volumes:
+                - name: tmp
+                  emptyDir:
+                      sizeLimit: "256Mi"
+                - name: aspnet-tmp
+                  emptyDir:
+                      sizeLimit: "256Mi"
             imagePullSecrets:
                 - name: acr-secret
 

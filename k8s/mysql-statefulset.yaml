@@ -1,5 +1,5 @@
 ---
-# MySQL Secret (TEMPLATE - Replace passwords before applying!)
+# MySQL Secret
 apiVersion: v1
 kind: Secret
 metadata:
@@ -7,11 +7,10 @@ metadata:
     namespace: uat
 type: Opaque
 stringData:
-    # IMPORTANT: Change these passwords before deploying!
-    root-password: "38EBD2537A6D4194958B4E83fd1D6!"
-    user-password: "38EBD2537A6D4194958B4E83fd1D6!"
-    database: "hrsdb"
-    username: "hrsuser"
+    root-password: "__MYSQL_ROOT_PASSWORD__"
+    user-password: "__MYSQL_USER_PASSWORD__"
+    database: "__MYSQL_DATABASE__"
+    username: "__MYSQL_USERNAME__"
 
 ---
 # MySQL Service (Headless for StatefulSet)

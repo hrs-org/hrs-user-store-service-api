@@ -17,15 +17,10 @@ on:
                     - uat
                     - staging
 
-permissions:
-    contents: read
-    actions: read
-    id-token: write
-
 env:
     AZURE_RESOURCE_GROUP: rg-hrsm-uat
     AKS_CLUSTER_NAME: hrsm-uat-aks
-    NAMESPACE: users
+    NAMESPACE: uat
     DEPLOYMENT_NAME: hrs-user-service
     SERVICE_NAME: hrs-user-service
 
@@ -34,6 +29,8 @@ jobs:
         name: Deploy to AKS ${{ github.event.inputs.environment }}
         runs-on: ubuntu-latest
         environment: ${{ github.event.inputs.environment }}
+        permissions:
+            contents: read
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -60,55 +57,113 @@ jobs:
                   kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
             - name: Attach ACR to AKS (if not already attached)
+              env:
+                  ACR_NAME: ${{ secrets.ACR_NAME }}
               run: |
                   az aks update \
                     --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
                     --name ${{ env.AKS_CLUSTER_NAME }} \
-                    --attach-acr ${{ secrets.ACR_NAME }} || echo "ACR already attached or unable to attach"
+                    --attach-acr "$ACR_NAME" || echo "ACR already attached or unable to attach"
 
             - name: Verify image exists in ACR
+              env:
+                  ACR_NAME: ${{ secrets.ACR_NAME }}
+                  IMAGE_TAG: ${{ github.event.inputs.version }}
               run: |
                   echo "🔍 Verifying image exists in ACR..."
 
                   # List all available tags
                   echo "Available tags:"
                   az acr repository show-tags \
-                    --name ${{ secrets.ACR_NAME }} \
+                    --name "$ACR_NAME" \
                     --repository hrs-user-service \
                     --orderby time_desc \
                     --output table
 
                   # Check if specific tag exists
                   if az acr repository show-tags \
-                      --name ${{ secrets.ACR_NAME }} \
+                      --name "$ACR_NAME" \
                       --repository hrs-user-service \
-                      --output tsv | grep -q "^${{ github.event.inputs.version }}$"; then
-                    echo "✅ Image tag '${{ github.event.inputs.version }}' found in ACR"
+                      --output tsv | grep -Fxq "$IMAGE_TAG"; then
+                    echo "✅ Image tag '${IMAGE_TAG}' found in ACR"
                   else
-                    echo "❌ Image tag '${{ github.event.inputs.version }}' not found in ACR"
+                    echo "❌ Image tag '${IMAGE_TAG}' not found in ACR"
                     echo ""
                     echo "Please use one of the available tags listed above or build the image first."
                     exit 1
                   fi
 
-            - name: Prepare deployment manifest
+            - name: Validate deployment secrets
+              env:
+                  DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+                  MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+                  MYSQL_USER_PASSWORD: ${{ secrets.MYSQL_USER_PASSWORD }}
+                  JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
               run: |
-                  echo "Preparing deployment manifest with secrets..."
+                  missing=0
+
+                  for name in DB_CONNECTION_STRING MYSQL_ROOT_PASSWORD MYSQL_USER_PASSWORD JWT_SECRET_KEY; do
+                    if [ -z "${!name}" ]; then
+                      echo "❌ Missing required GitHub secret: $name"
+                      missing=1
+                    fi
+                  done
+
+                  if [ "$missing" -ne 0 ]; then
+                    exit 1
+                  fi
+
+            - name: Prepare deployment manifests
+              env:
+                  IMAGE_TAG: ${{ github.event.inputs.version }}
+                  MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+                  MYSQL_USER_PASSWORD: ${{ secrets.MYSQL_USER_PASSWORD }}
+                  MYSQL_DATABASE: "${{ secrets.MYSQL_DATABASE || 'hrsdb' }}"
+                  MYSQL_USERNAME: "${{ secrets.MYSQL_USERNAME || 'hrsuser' }}"
+                  DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+                  ACR_NAME: ${{ secrets.ACR_NAME }}
+                  JWT_ISSUER: "${{ secrets.JWT_ISSUER || 'https://auth.hrs.com' }}"
+                  JWT_AUDIENCE: "${{ secrets.JWT_AUDIENCE || 'https://hrs-api' }}"
+                  JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+                  ALLOWED_ORIGINS: "${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}"
+                  EMAIL_SERVICE_ENDPOINT: "${{ secrets.EMAIL_SERVICE_ENDPOINT || 'http://localhost:5001' }}"
+              run: |
+                  echo "Preparing deployment manifests with GitHub secrets..."
+
+                  sed "s|__MYSQL_ROOT_PASSWORD__|$MYSQL_ROOT_PASSWORD|g" k8s/mysql-statefulset.yaml | \
+                  sed "s|__MYSQL_USER_PASSWORD__|$MYSQL_USER_PASSWORD|g" | \
+                  sed "s|__MYSQL_DATABASE__|$MYSQL_DATABASE|g" | \
+                  sed "s|__MYSQL_USERNAME__|$MYSQL_USERNAME|g" \
+                  > k8s/mysql-statefulset-final.yaml
 
                   # Replace placeholders in the deployment file
-                  sed "s|__ACR_NAME__|${{ secrets.ACR_NAME }}|g" k8s/deployment-uat.yaml | \
-                  sed "s|__IMAGE_TAG__|${{ github.event.inputs.version }}|g" | \
-                  sed "s|__DB_CONNECTION_STRING__|${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}|g" | \
-                  sed "s|__JWT_ISSUER__|${{ secrets.JWT_ISSUER || 'https://auth.hrs.com' }}|g" | \
-                  sed "s|__JWT_AUDIENCE__|${{ secrets.JWT_AUDIENCE || 'https://hrs-api' }}|g" | \
-                  sed "s|__JWT_SECRET_KEY__|${{ secrets.JWT_SECRET_KEY }}|g" | \
-                  sed "s|__ALLOWED_ORIGINS__|${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}|g" | \
-                  sed "s|__EMAIL_SERVICE_ENDPOINT__|${{ secrets.EMAIL_SERVICE_ENDPOINT || 'http://localhost:5001' }}|g" \
+                  sed "s|__ACR_NAME__|$ACR_NAME|g" k8s/deployment-uat.yaml | \
+                  sed "s|__IMAGE_TAG__|$IMAGE_TAG|g" | \
+                  sed "s|__DB_CONNECTION_STRING__|$DB_CONNECTION_STRING|g" | \
+                  sed "s|__JWT_ISSUER__|$JWT_ISSUER|g" | \
+                  sed "s|__JWT_AUDIENCE__|$JWT_AUDIENCE|g" | \
+                  sed "s|__JWT_SECRET_KEY__|$JWT_SECRET_KEY|g" | \
+                  sed "s|__ALLOWED_ORIGINS__|$ALLOWED_ORIGINS|g" | \
+                  sed "s|__EMAIL_SERVICE_ENDPOINT__|$EMAIL_SERVICE_ENDPOINT|g" \
                   > k8s/deployment-final.yaml
 
                   # Show the final manifest for debugging (mask sensitive values)
                   echo "=== Final Deployment Manifest (sensitive values masked) ==="
                   cat k8s/deployment-final.yaml | grep -v "DB_CONNECTION_STRING" | grep -v "JWT_SECRET_KEY" || cat k8s/deployment-final.yaml
+
+                  echo "=== Final MySQL Manifest (sensitive values masked) ==="
+                  cat k8s/mysql-statefulset-final.yaml | grep -v "root-password" | grep -v "user-password" || cat k8s/mysql-statefulset-final.yaml
+
+            - name: Ensure MySQL exists
+              run: |
+                  echo "Checking MySQL resources..."
+
+                  if kubectl get secret/mysql-user-secret service/mysql-user-db statefulset.apps/mysql-user-db -n ${{ env.NAMESPACE }} >/dev/null 2>&1; then
+                    echo "MySQL resources already exist. Skipping MySQL apply."
+                  else
+                    echo "MySQL resources are missing. Creating MySQL resources..."
+                    kubectl apply -f k8s/mysql-statefulset-final.yaml
+                  fi
 
             - name: Deploy to AKS
               run: |
@@ -242,6 +297,7 @@ jobs:
         needs: deploy-to-aks
         if: failure()
         environment: ${{ github.event.inputs.environment }}
+        permissions: {}
         steps:
             - name: Set up Azure CLI
               uses: azure/login@v1

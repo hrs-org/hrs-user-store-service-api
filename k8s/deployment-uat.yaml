@@ -18,6 +18,7 @@ spec:
                 app: hrs-user-service
         spec:
             serviceAccountName: hrs-user-service-sa
+            automountServiceAccountToken: false
             # SNYK-CC-K8S-6: Add security context at pod level
             securityContext:
                 runAsNonRoot: true

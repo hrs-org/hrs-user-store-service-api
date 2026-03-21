@@ -384,15 +384,8 @@ jobs:
                   echo "API health check passed"
 
             - name: Check MySQL readiness and ping
-              env:
-                  MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
               run: |
                   set -euo pipefail
-
-                  if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
-                    echo "Missing required GitHub secret: MYSQL_ROOT_PASSWORD"
-                    exit 1
-                  fi
 
                   echo "Checking MySQL service and endpoints..."
                   kubectl get service mysql-user-db -n ${{ env.NAMESPACE }}
@@ -408,11 +401,23 @@ jobs:
                     exit 1
                   fi
 
+                  ROOT_PASSWORD_B64=$(kubectl get secret mysql-user-secret -n ${{ env.NAMESPACE }} -o jsonpath='{.data.root-password}')
+                  if [ -z "$ROOT_PASSWORD_B64" ]; then
+                    echo "MySQL root password key not found in Kubernetes secret mysql-user-secret"
+                    exit 1
+                  fi
+
+                  MYSQL_PWD=$(printf '%s' "$ROOT_PASSWORD_B64" | base64 --decode)
+                  if [ -z "$MYSQL_PWD" ]; then
+                    echo "Decoded MySQL root password is empty"
+                    exit 1
+                  fi
+
                   echo "Pinging MySQL in pod: $MYSQL_POD"
-                  kubectl exec -n ${{ env.NAMESPACE }} "$MYSQL_POD" -- sh -c "mysqladmin ping -u root -p\"$MYSQL_ROOT_PASSWORD\" --silent"
+                  kubectl exec -n ${{ env.NAMESPACE }} "$MYSQL_POD" -- env MYSQL_PWD="$MYSQL_PWD" mysqladmin ping -u root --silent
 
                   echo "Running MySQL SELECT 1"
-                  DB_RESULT=$(kubectl exec -n ${{ env.NAMESPACE }} "$MYSQL_POD" -- sh -c "mysql -u root -p\"$MYSQL_ROOT_PASSWORD\" -Nse 'SELECT 1'")
+                  DB_RESULT=$(kubectl exec -n ${{ env.NAMESPACE }} "$MYSQL_POD" -- env MYSQL_PWD="$MYSQL_PWD" mysql -u root -Nse 'SELECT 1')
                   if [ "$DB_RESULT" != "1" ]; then
                     echo "MySQL query check failed. Result: $DB_RESULT"
                     exit 1

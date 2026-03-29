@@ -373,6 +373,7 @@ jobs:
                   docker run -d -p 8080:80 --name "$PREDAST_CONTAINER_NAME" \
                     --add-host=host.docker.internal:host-gateway \
                     -e ASPNETCORE_ENVIRONMENT=Production \
+                    # Local-only HTTP on the runner; no external exposure in CI
                     -e ASPNETCORE_URLS="http://+:80" \
                     -e ConnectionStrings__DefaultConnection="$DB_CONNECTION_STRING" \
                     -e Jwt__Key="$JWT_SECRET_KEY" \
@@ -433,6 +434,7 @@ jobs:
             - name: OWASP ZAP Baseline Scan
               uses: zaproxy/action-baseline@99b9334bed0a0ff8d797764e76c9ecae53168436 # v0.10.0
               with:
+                  # Local-only target on runner; clear-text HTTP is acceptable here
                   target: "http://localhost:8080"
                   rules_file_name: ".zap/rules.tsv"
                   cmd_options: "-a -j -l WARN -T 10 -I"
@@ -595,6 +597,7 @@ jobs:
                   echo "Starting container..."
                   docker run -d -p 5000:80 --name "$DAST_CONTAINER_NAME" \
                     -e ASPNETCORE_ENVIRONMENT=Production \
+                    # Local-only HTTP on the runner; no external exposure in CI
                     -e ASPNETCORE_URLS="http://+:80" \
                     -e ConnectionStrings__DefaultConnection="${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}" \
                     -e Jwt__Key="${{ secrets.JWT_SECRET_KEY }}" \
@@ -629,6 +632,7 @@ jobs:
             - name: OWASP ZAP Baseline Scan
               uses: zaproxy/action-baseline@99b9334bed0a0ff8d797764e76c9ecae53168436 # v0.10.0
               with:
+                  # Local-only target on runner; clear-text HTTP is acceptable here
                   target: "http://localhost:5000"
                   rules_file_name: ".zap/rules.tsv"
                   cmd_options: "-a -j -l WARN -T 10 -I"

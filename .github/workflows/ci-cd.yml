@@ -296,6 +296,8 @@ jobs:
                   output: "trivy-results.sarif"
 
             - name: Upload SARIF to GitHub Security
+              # Forked PRs do not get a token with security-events write permission.
+              if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
               uses: github/codeql-action/upload-sarif@v4
               with:
                   sarif_file: "trivy-results.sarif"
@@ -303,6 +305,21 @@ jobs:
     pre-dast:
         name: Pre-DAST Security Scan
         runs-on: ubuntu-latest
+        services:
+            mysql:
+                image: mysql:8.0
+                env:
+                    MYSQL_DATABASE: hrsdb_tmp
+                    MYSQL_USER: hrs_user_tmp
+                    MYSQL_PASSWORD: hrs_pass_tmp_7f2a
+                    MYSQL_ROOT_PASSWORD: root_pass_tmp_9c1e
+                ports:
+                    - 3306:3306
+            options: >-
+                --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+                --health-interval=10s
+                --health-timeout=5s
+                --health-retries=12
         permissions:
             contents: read
         steps:
@@ -310,6 +327,19 @@ jobs:
               uses: actions/checkout@v4
               with:
                   fetch-depth: 0
+
+            - name: Wait for MySQL service
+              run: |
+                  for i in {1..20}; do
+                  if mysqladmin ping -h 127.0.0.1 -u root -p"root_pass_tmp_9c1e" --silent; then
+                  echo "MySQL is ready"
+                  exit 0
+                  fi
+                  echo "Waiting for MySQL... (${i}/20)"
+                  sleep 3
+                  done
+                  echo "MySQL did not become ready in time"
+                  exit 1
 
             - name: Build Docker image for pre-DAST
               env:
@@ -325,7 +355,7 @@ jobs:
 
             - name: Run Docker image locally
               env:
-                  DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}
+                  DB_CONNECTION_STRING: "Server=127.0.0.1;Port=3306;Database=hrsdb_tmp;User=hrs_user_tmp;Password=hrs_pass_tmp_7f2a;"
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
               run: |
                   echo "Starting container..."

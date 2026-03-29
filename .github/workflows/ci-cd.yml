@@ -305,14 +305,19 @@ jobs:
     pre-dast:
         name: Pre-DAST Security Scan
         runs-on: ubuntu-latest
+        env:
+            PREDAST_DB_NAME: hrsdb_tmp
+            PREDAST_DB_USER: hrs_user_tmp
+            PREDAST_DB_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+            PREDAST_DB_ROOT_PASSWORD: root-${{ github.run_id }}-${{ github.run_attempt }}
         services:
             mysql:
                 image: mysql:8.0
                 env:
-                    MYSQL_DATABASE: ${{ secrets.PREDAST_MYSQL_DATABASE }}
-                    MYSQL_USER: ${{ secrets.PREDAST_MYSQL_USER }}
-                    MYSQL_PASSWORD: ${{ secrets.PREDAST_MYSQL_PASSWORD }}
-                    MYSQL_ROOT_PASSWORD: ${{ secrets.PREDAST_MYSQL_ROOT_PASSWORD }}
+                    MYSQL_DATABASE: ${{ env.PREDAST_DB_NAME }}
+                    MYSQL_USER: ${{ env.PREDAST_DB_USER }}
+                    MYSQL_PASSWORD: ${{ env.PREDAST_DB_PASSWORD }}
+                    MYSQL_ROOT_PASSWORD: ${{ env.PREDAST_DB_ROOT_PASSWORD }}
                 ports:
                     - 3306:3306
                 options: >-
@@ -328,10 +333,15 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - name: Mask pre-DAST DB credentials
+              run: |
+                  echo "::add-mask::$PREDAST_DB_PASSWORD"
+                  echo "::add-mask::$PREDAST_DB_ROOT_PASSWORD"
+
             - name: Wait for MySQL service
               run: |
                   for i in {1..20}; do
-                  if mysqladmin ping -h 127.0.0.1 -u root -p"${{ secrets.PREDAST_MYSQL_ROOT_PASSWORD }}" --silent; then
+                  if mysqladmin ping -h 127.0.0.1 -u root -p"$PREDAST_DB_ROOT_PASSWORD" --silent; then
                   echo "MySQL is ready"
                   exit 0
                   fi
@@ -355,7 +365,7 @@ jobs:
 
             - name: Run Docker image locally
               env:
-                  DB_CONNECTION_STRING: ${{ secrets.PREDAST_DB_CONNECTION_STRING }}
+                  DB_CONNECTION_STRING: "Server=host.docker.internal;Port=3306;Database=${{ env.PREDAST_DB_NAME }};User=${{ env.PREDAST_DB_USER }};Password=${{ env.PREDAST_DB_PASSWORD }};"
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
               run: |
                   echo "Starting container..."

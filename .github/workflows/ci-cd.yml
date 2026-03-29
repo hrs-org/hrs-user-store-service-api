@@ -373,9 +373,9 @@ jobs:
                   echo "Waiting for application to start..."
                   sleep 30
 
-                  # Wait for health endpoint with retries
+                  # Wait for health endpoint with retries (migrations can be slow)
                   health_ok=false
-                  for i in {1..10}; do
+                  for i in {1..20}; do
                     if curl -f http://localhost:8080/health 2>/dev/null; then
                       echo "Health check passed on attempt $i"
                       health_ok=true

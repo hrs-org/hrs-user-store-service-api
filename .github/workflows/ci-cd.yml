@@ -315,11 +315,11 @@ jobs:
                     MYSQL_ROOT_PASSWORD: root_pass_tmp_9c1e
                 ports:
                     - 3306:3306
-            options: >-
-                --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
-                --health-interval=10s
-                --health-timeout=5s
-                --health-retries=12
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+                    --health-interval=10s
+                    --health-timeout=5s
+                    --health-retries=12
         permissions:
             contents: read
         steps:

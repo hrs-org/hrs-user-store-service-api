@@ -309,10 +309,10 @@ jobs:
             mysql:
                 image: mysql:8.0
                 env:
-                    MYSQL_DATABASE: hrsdb_tmp
-                    MYSQL_USER: hrs_user_tmp
-                    MYSQL_PASSWORD: hrs_pass_tmp_7f2a
-                    MYSQL_ROOT_PASSWORD: root_pass_tmp_9c1e
+                    MYSQL_DATABASE: ${{ secrets.PREDAST_MYSQL_DATABASE }}
+                    MYSQL_USER: ${{ secrets.PREDAST_MYSQL_USER }}
+                    MYSQL_PASSWORD: ${{ secrets.PREDAST_MYSQL_PASSWORD }}
+                    MYSQL_ROOT_PASSWORD: ${{ secrets.PREDAST_MYSQL_ROOT_PASSWORD }}
                 ports:
                     - 3306:3306
                 options: >-
@@ -331,7 +331,7 @@ jobs:
             - name: Wait for MySQL service
               run: |
                   for i in {1..20}; do
-                  if mysqladmin ping -h 127.0.0.1 -u root -p"root_pass_tmp_9c1e" --silent; then
+                  if mysqladmin ping -h 127.0.0.1 -u root -p"${{ secrets.PREDAST_MYSQL_ROOT_PASSWORD }}" --silent; then
                   echo "MySQL is ready"
                   exit 0
                   fi
@@ -355,7 +355,7 @@ jobs:
 
             - name: Run Docker image locally
               env:
-                  DB_CONNECTION_STRING: "Server=host.docker.internal;Port=3306;Database=hrsdb_tmp;User=hrs_user_tmp;Password=hrs_pass_tmp_7f2a;"
+                  DB_CONNECTION_STRING: ${{ secrets.PREDAST_DB_CONNECTION_STRING }}
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
               run: |
                   echo "Starting container..."

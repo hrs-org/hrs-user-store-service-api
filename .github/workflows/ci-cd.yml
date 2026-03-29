@@ -369,11 +369,11 @@ jobs:
                   DB_CONNECTION_STRING: "Server=host.docker.internal;Port=3306;Database=${{ env.PREDAST_DB_NAME }};User=${{ env.PREDAST_DB_USER }};Password=${{ env.PREDAST_DB_PASSWORD }};"
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
               run: |
+                  # Local-only HTTP on the runner; no external exposure in CI
                   echo "Starting container..."
                   docker run -d -p 8080:80 --name "$PREDAST_CONTAINER_NAME" \
                     --add-host=host.docker.internal:host-gateway \
                     -e ASPNETCORE_ENVIRONMENT=Production \
-                    # Local-only HTTP on the runner; no external exposure in CI
                     -e ASPNETCORE_URLS="http://+:80" \
                     -e ConnectionStrings__DefaultConnection="$DB_CONNECTION_STRING" \
                     -e Jwt__Key="$JWT_SECRET_KEY" \
@@ -594,10 +594,10 @@ jobs:
                   echo "Pulling image: $IMAGE_REPO"
                   docker pull "$IMAGE_REPO"
 
+                  # Local-only HTTP on the runner; no external exposure in CI
                   echo "Starting container..."
                   docker run -d -p 5000:80 --name "$DAST_CONTAINER_NAME" \
                     -e ASPNETCORE_ENVIRONMENT=Production \
-                    # Local-only HTTP on the runner; no external exposure in CI
                     -e ASPNETCORE_URLS="http://+:80" \
                     -e ConnectionStrings__DefaultConnection="${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}" \
                     -e Jwt__Key="${{ secrets.JWT_SECRET_KEY }}" \

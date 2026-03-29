@@ -454,7 +454,7 @@ jobs:
               with:
                   target: "https://localhost:8080"
                   rules_file_name: ".zap/rules.tsv"
-                  cmd_options: "-a -j -l WARN -T 10 -I -k"
+                  cmd_options: "-a -j -l WARN -T 10 -I"
 
             - name: Upload DAST scan results
               uses: actions/upload-artifact@v4

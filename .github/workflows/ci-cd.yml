@@ -310,6 +310,7 @@ jobs:
             PREDAST_DB_USER: hrs_user_tmp
             PREDAST_DB_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
             PREDAST_DB_ROOT_PASSWORD: root-${{ github.run_id }}-${{ github.run_attempt }}
+            PREDAST_CONTAINER_NAME: predast-${{ github.run_id }}-${{ github.run_attempt }}
         services:
             mysql:
                 image: mysql:8.0
@@ -369,7 +370,7 @@ jobs:
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
               run: |
                   echo "Starting container..."
-                  docker run -d -p 8080:80 --name pre-dast-user-service \
+                  docker run -d -p 8080:80 --name "$PREDAST_CONTAINER_NAME" \
                     --add-host=host.docker.internal:host-gateway \
                     -e ASPNETCORE_ENVIRONMENT=Production \
                     -e ASPNETCORE_URLS="http://+:80" \
@@ -399,7 +400,7 @@ jobs:
                   if [ "$health_ok" != "true" ]; then
                     echo "Health endpoint did not become ready in time"
                     docker ps -a
-                    docker logs pre-dast-user-service || true
+                    docker logs "$PREDAST_CONTAINER_NAME" || true
                     exit 1
                   fi
 
@@ -407,7 +408,7 @@ jobs:
                   docker ps -a
 
                   echo "Container logs:"
-                  docker logs pre-dast-user-service
+                  docker logs "$PREDAST_CONTAINER_NAME"
 
                   echo "Testing health endpoint:"
                   curl -f http://localhost:8080/health || {
@@ -450,7 +451,7 @@ jobs:
 
             - name: Cleanup pre-DAST container
               if: always()
-              run: docker rm -f pre-dast-user-service || true
+              run: docker rm -f "$PREDAST_CONTAINER_NAME" || true
 
     docker-build:
         name: Build & Push Docker Image to ACR
@@ -556,6 +557,8 @@ jobs:
         environment: uat
         permissions:
             contents: read
+        env:
+            DAST_CONTAINER_NAME: dast-${{ github.run_id }}-${{ github.run_attempt }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -590,7 +593,7 @@ jobs:
                   docker pull "$IMAGE_REPO"
 
                   echo "Starting container..."
-                  docker run -d -p 5000:80 --name hrs-user-service \
+                  docker run -d -p 5000:80 --name "$DAST_CONTAINER_NAME" \
                     -e ASPNETCORE_ENVIRONMENT=Production \
                     -e ASPNETCORE_URLS="http://+:80" \
                     -e ConnectionStrings__DefaultConnection="${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}" \
@@ -608,7 +611,7 @@ jobs:
                   docker ps -a
 
                   echo "Container logs:"
-                  docker logs hrs-user-service || true
+                  docker logs "$DAST_CONTAINER_NAME" || true
 
                   echo "Testing health endpoint:"
                   curl -f http://localhost:5000/health || echo "Health endpoint not available"
@@ -645,5 +648,5 @@ jobs:
             - name: Stop application
               if: always()
               run: |
-                  docker stop hrs-user-service || true
-                  docker rm hrs-user-service || true
+                  docker stop "$DAST_CONTAINER_NAME" || true
+                  docker rm "$DAST_CONTAINER_NAME" || true

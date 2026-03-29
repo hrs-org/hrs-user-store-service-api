@@ -116,6 +116,14 @@ builder.Services.AddCors(options =>
     );
 });
 
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+    options.Preload = true;
+    options.ExcludedHosts.Clear();
+});
+
 // Add health checks
 builder.Services.AddHealthChecks();
 

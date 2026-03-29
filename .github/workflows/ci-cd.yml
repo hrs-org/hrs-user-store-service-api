@@ -355,11 +355,12 @@ jobs:
 
             - name: Run Docker image locally
               env:
-                  DB_CONNECTION_STRING: "Server=127.0.0.1;Port=3306;Database=hrsdb_tmp;User=hrs_user_tmp;Password=hrs_pass_tmp_7f2a;"
+                  DB_CONNECTION_STRING: "Server=host.docker.internal;Port=3306;Database=hrsdb_tmp;User=hrs_user_tmp;Password=hrs_pass_tmp_7f2a;"
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
               run: |
                   echo "Starting container..."
                   docker run -d -p 8080:80 --name pre-dast-user-service \
+                    --add-host=host.docker.internal:host-gateway \
                     -e ASPNETCORE_ENVIRONMENT=Production \
                     -e ConnectionStrings__DefaultConnection="$DB_CONNECTION_STRING" \
                     -e Jwt__Key="$JWT_SECRET_KEY" \
@@ -373,14 +374,23 @@ jobs:
                   sleep 30
 
                   # Wait for health endpoint with retries
+                  health_ok=false
                   for i in {1..10}; do
                     if curl -f http://localhost:8080/health 2>/dev/null; then
                       echo "Health check passed on attempt $i"
+                      health_ok=true
                       break
                     fi
                     echo "Health check attempt $i failed, retrying in 5 seconds..."
                     sleep 5
                   done
+
+                  if [ "$health_ok" != "true" ]; then
+                    echo "Health endpoint did not become ready in time"
+                    docker ps -a
+                    docker logs pre-dast-user-service || true
+                    exit 1
+                  fi
 
                   echo "Container status:"
                   docker ps -a
@@ -389,12 +399,19 @@ jobs:
                   docker logs pre-dast-user-service
 
                   echo "Testing health endpoint:"
-                  curl -f http://localhost:8080/health || echo "Health endpoint not available"
+                  curl -f http://localhost:8080/health || {
+                    echo "Health endpoint not available"
+                    exit 1
+                  }
 
                   echo "Verifying common probe paths do not return 5xx..."
                   for path in / /favicon.ico /robots.txt /sitemap.xml; do
-                    code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080${path}")
+                    code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080${path}" || true)
                     echo "${path} -> ${code}"
+                    if [ -z "$code" ] || [ "$code" = "000" ]; then
+                      echo "Endpoint ${path} is unreachable"
+                      exit 1
+                    fi
                     if [[ "$code" =~ ^5 ]]; then
                       echo "Endpoint ${path} returned ${code}"
                       exit 1

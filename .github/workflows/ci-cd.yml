@@ -382,6 +382,7 @@ jobs:
                     -inkey "$CERT_DIR/key.pem" \
                     -in "$CERT_DIR/cert.pem" \
                     -password pass:"$CERT_PASSWORD"
+                  chmod 644 "$CERT_PATH"
                   echo "::add-mask::$CERT_PASSWORD"
 
                   echo "Starting container..."
@@ -605,6 +606,7 @@ jobs:
                     -inkey "$CERT_DIR/key.pem" \
                     -in "$CERT_DIR/cert.pem" \
                     -password pass:"$CERT_PASSWORD"
+                  chmod 644 "$CERT_PATH"
                   echo "::add-mask::$CERT_PASSWORD"
 
                   az acr login --name ${{ secrets.ACR_NAME }}

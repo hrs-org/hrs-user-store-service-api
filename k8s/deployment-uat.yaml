@@ -39,13 +39,28 @@ spec:
                       # Database Connection
                       - name: ConnectionStrings__DefaultConnection
                         value: "__DB_CONNECTION_STRING__"
-                      # JWT Configuration
-                      - name: Jwt__Issuer
-                        value: "__JWT_ISSUER__"
-                      - name: Jwt__Audience
-                        value: "__JWT_AUDIENCE__"
-                      - name: Jwt__Key
-                        value: "__JWT_SECRET_KEY__"
+                      # Auth0 Configuration
+                      - name: Auth0__Domain
+                        value: "__AUTH0_DOMAIN__"
+                      - name: Auth0__Audience
+                        value: "__AUTH0_AUDIENCE__"
+                      # Auth0 Management API (for server-to-server)
+                      - name: Auth0Management__Domain
+                        value: "__AUTH0_MANAGEMENT_DOMAIN__"
+                      - name: Auth0Management__ClientId
+                        value: "__AUTH0_MANAGEMENT_CLIENT_ID__"
+                      - name: Auth0Management__ClientSecret
+                        value: "__AUTH0_MANAGEMENT_CLIENT_SECRET__"
+                      - name: Auth0Management__CustomerRoleId
+                        value: "__AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID__"
+                      - name: Auth0Management__OwnerRoleId
+                        value: "__AUTH0_MANAGEMENT_OWNER_ROLE_ID__"
+                      - name: Auth0Management__EmployeeRoleId
+                        value: "__AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID__"
+                      - name: Auth0Management__ManagerRoleId
+                        value: "__AUTH0_MANAGEMENT_MANAGER_ROLE_ID__"
+                      - name: Auth0Management__AdminRoleId
+                        value: "__AUTH0_MANAGEMENT_ADMIN_ROLE_ID__"
                       # CORS Configuration
                       - name: AllowedOrigins
                         value: "__ALLOWED_ORIGINS__"

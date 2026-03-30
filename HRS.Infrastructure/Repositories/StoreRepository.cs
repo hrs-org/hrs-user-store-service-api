@@ -20,10 +20,16 @@ public class StoreRepository : CrudRepository<Store>, IStoreRepository
     }
 
     public async Task<Store?> GetByNameAsync(string name)
-        => await _db.Stores.FirstOrDefaultAsync(s => s.Name == name);
+    {
+        var normalizedName = name.Trim();
+        return await _db.Stores.FirstOrDefaultAsync(s => s.Name == normalizedName);
+    }
 
     public async Task<bool> IsNameUniqueAsync(string name)
-        => !await _db.Stores.AnyAsync(s => s.Name == name);
+    {
+        var normalizedName = name.Trim();
+        return !await _db.Stores.AnyAsync(s => s.Name == normalizedName);
+    }
 
     public async Task<bool> IsIdUniqueAsync(int id)
         => !await _db.Stores.AnyAsync(s => s.Id == id);

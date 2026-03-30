@@ -23,7 +23,7 @@ public class UserRepositoryTests
         var dbName = $"UserRepoDb_{nameof(GetByEmailAsync_ReturnsUser_WhenExists)}_{Guid.NewGuid()}";
         using var dbContext = CreateDbContext(dbName);
         var repository = new UserRepository(dbContext);
-        var user = new User { Id = 2, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Manager, PasswordHash = "123456" };
+        var user = new User { Id = 2, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Manager };
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
 
@@ -57,7 +57,7 @@ public class UserRepositoryTests
         var dbName = $"UserRepoDb_{nameof(UpdateUserAsync_UpdatesToken_WhenUserExists)}_{Guid.NewGuid()}";
         using var dbContext = CreateDbContext(dbName);
         var repository = new UserRepository(dbContext);
-        var user = new User { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Manager, PasswordHash = "123456" };
+        var user = new User { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Manager };
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
         var update = new User
@@ -94,8 +94,8 @@ public class UserRepositoryTests
         using var dbContext = CreateDbContext(dbName);
         var repository = new UserRepository(dbContext);
         dbContext.Users.AddRange(
-            new User { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee, PasswordHash = "123456", StoreId = 1 },
-            new User { Id = 2, FirstName = "Jaseper", LastName = "Shen", Email = "test2@mail.com", Role = UserRole.Manager, PasswordHash = "123456", StoreId = 1 }
+            new User { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee, StoreId = 1 },
+            new User { Id = 2, FirstName = "Jaseper", LastName = "Shen", Email = "test2@mail.com", Role = UserRole.Manager, StoreId = 1 }
         );
         await dbContext.SaveChangesAsync();
 
@@ -115,7 +115,7 @@ public class UserRepositoryTests
         using var dbContext = CreateDbContext(dbName);
         var repository = new UserRepository(dbContext);
         dbContext.Users.Add(new User
-        { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee, PasswordHash = "123456" });
+        { Id = 1, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee });
         await dbContext.SaveChangesAsync();
 
         // Act
@@ -148,7 +148,7 @@ public class UserRepositoryTests
         using var dbContext = CreateDbContext(dbName);
         var repository = new UserRepository(dbContext);
         dbContext.Users.Add(new User
-        { Id = 3, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee, PasswordHash = "123456" });
+        { Id = 3, FirstName = "Evan", LastName = "Feri", Email = "test@mail.com", Role = UserRole.Employee });
         await dbContext.SaveChangesAsync();
 
         // Act

@@ -10,23 +10,26 @@ namespace HRS.API.Services;
 public class StoreService : IStoreService
 {
     private readonly IStoreRepository _storeRepository;
+    private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserRepository _userRepository;
-    private readonly IUserVerificationService _userVerificationService;
     private readonly IMapper _mapper;
     private readonly HttpClient _httpClient;
+    private readonly IUserContextService _userContextService;
 
     public StoreService(
         IStoreRepository storeRepository,
+        IAuth0ManagementService auth0ManagementService,
         IUserRepository userRepository,
-        IUserVerificationService userVerificationService,
         IMapper mapper,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IUserContextService userContextService)
     {
         _storeRepository = storeRepository;
+        _auth0ManagementService = auth0ManagementService;
         _userRepository = userRepository;
-        _userVerificationService = userVerificationService;
         _mapper = mapper;
         _httpClient = httpClientFactory.CreateClient("EmailService");
+        _userContextService = userContextService;
     }
 
     public async Task<StoreDto> GetStoreByIdAsync(int id)
@@ -55,6 +58,12 @@ public class StoreService : IStoreService
 
     public async Task<bool> RegisterStoreAsync(RegisterStoreDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            throw new ArgumentException("Email is required");
+
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            throw new ArgumentException("Store name is required");
+
         var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
         if (existingUser != null)
             throw new InvalidOperationException("User with this email already exists");
@@ -63,19 +72,20 @@ public class StoreService : IStoreService
         if (existingStore != null)
             throw new InvalidOperationException("Store with this name already exists");
 
-        if (dto.Password.Length < 8)
-            throw new ArgumentException("Password must be at least 8 characters long");
-
         await using var tx = await _storeRepository.BeginTransactionAsync();
 
         try
         {
+            var now = DateTime.UtcNow;
+
             var store = new Store
             {
-                Name = dto.Name,
+                Name = dto.Name.Trim(),
                 Description = dto.Description,
                 Address = dto.Address,
                 PhoneNumber = dto.PhoneNumber,
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
             await _storeRepository.AddAsync(store);
@@ -83,35 +93,20 @@ public class StoreService : IStoreService
 
             var user = new User
             {
-                Email = dto.Email,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Role = UserRole.Admin,
+                Auth0UserId = _userContextService.GetAuth0Id(),
+                Email = dto.Email.Trim(),
+                FirstName = dto.FirstName.Trim(),
+                LastName = dto.LastName.Trim(),
+                Role = UserRole.Owner,
                 StoreId = store.Id,
-                IsVerified = false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
             await _userRepository.AddAsync(user);
             await _userRepository.SaveChangesAsync();
-
-            var verification = await _userVerificationService.CreateAsync(
-                user.Id,
-                "Email",
-                TimeSpan.FromHours(24)
-            );
-
-            var verificationRequest = new
-            {
-                Email = user.Email,
-                VerificationToken = verification.Token,
-                FirstName = user.FirstName
-            };
-
-            var response = await _httpClient.PostAsJsonAsync("/api/email/send-verification", verificationRequest);
-            response.EnsureSuccessStatusCode();
+            await _auth0ManagementService.SyncUserRoleAsync(user.Auth0UserId, UserRole.Owner);
+            await _auth0ManagementService.SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
 
             await tx.CommitAsync();
 

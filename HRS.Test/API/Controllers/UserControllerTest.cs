@@ -11,12 +11,14 @@ namespace HRS.Test.API.Controllers;
 public class UsersControllerTests
 {
     private readonly IUserService _userService;
+    private readonly IUserContextService _userContextService;
     private readonly UsersController _controller;
 
     public UsersControllerTests()
     {
         _userService = Substitute.For<IUserService>();
-        _controller = new UsersController(_userService);
+        _userContextService = Substitute.For<IUserContextService>();
+        _controller = new UsersController(_userService, _userContextService);
     }
 
     [Fact]
@@ -51,8 +53,7 @@ public class UsersControllerTests
         {
             FirstName = "Test",
             LastName = "User",
-            Email = "exist@hrs.com",
-            Password = "ValidPass123!"
+            Email = "exist@hrs.com"
         };
         _userService.Register(dto).Returns(true);
 

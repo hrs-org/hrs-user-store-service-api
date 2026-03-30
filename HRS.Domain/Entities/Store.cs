@@ -15,4 +15,8 @@ public class Store
     [MaxLength(500)] public string? Address { get; set; }
 
     [MaxLength(20)] public string? PhoneNumber { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 }

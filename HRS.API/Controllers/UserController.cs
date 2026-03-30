@@ -11,14 +11,32 @@ namespace HRS.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IUserContextService _userContextService;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, IUserContextService userContextService)
     {
         _userService = userService;
+        _userContextService = userContextService;
+    }
+
+    [HttpGet("validate")]
+    [Authorize]
+    public async Task<ActionResult<bool>> ValidateUserExists()
+    {
+        var user = await _userContextService.GetUserByAuth0IdAsync();
+        return Ok(ApiResponse<bool>.OkResponse(user != null));
+    }
+
+    [HttpGet("active-user")]
+    [Authorize(Policy = "read:user")]
+    public async Task<IActionResult> GetCurrentUserAsync()
+    {
+        var res = await _userContextService.GetUserDtoAsync();
+        return Ok(ApiResponse<UserResponseDto>.OkResponse(res, "Get current user successful"));
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]//find rights to call api
+    [Authorize(Policy = "read:user")]
     public async Task<ActionResult<List<UserResponseDto>>> GetUsersAsync()
     {
         var users = await _userService.GetUsers();
@@ -26,22 +44,30 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
-    [Authorize]
+    [Authorize(Policy = "read:user")]
     public async Task<ActionResult<UserResponseDto>> GetUserAsync(int id)
     {
         var user = await _userService.GetUserById(id);
         return Ok(ApiResponse<UserResponseDto>.OkResponse(user));
     }
 
-    [HttpPost("register")]
+    [HttpPost("register/customer")]
     public async Task<ActionResult<bool>> Register([FromBody] RegisterDto dto)
     {
         var res = await _userService.Register(dto);
         return Ok(ApiResponse<bool>.OkResponse(res, "Registration successful"));
     }
 
+    [HttpPost("sync-auth0-metadata")]
+    [Authorize]
+    public async Task<ActionResult<bool>> SyncAuth0Metadata()
+    {
+        var res = await _userService.SyncCurrentUserMetadataAsync();
+        return Ok(ApiResponse<bool>.OkResponse(res, "Auth0 metadata synced successfully"));
+    }
+
     [HttpGet("employees")]
-    [Authorize(Roles = "Manager,Admin")]
+    [Authorize(Policy = "read:employee")]
     public async Task<ActionResult<List<UserResponseDto>>> GetEmployees()
     {
         var employeeList = await _userService.GetEmployees();
@@ -49,7 +75,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("employees")]
-    [Authorize(Roles = "Manager,Admin")]
+    [Authorize(Policy = "update:employee")]
     public async Task<ActionResult<UserResponseDto>> UpdateEmployee([FromBody] UpdateEmployeeDto dto)
     {
         var updatedEmployee = await _userService.UpdateEmployee(dto);
@@ -58,7 +84,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("employees/{id:int}")]
-    [Authorize(Roles = "Manager,Admin")]
+    [Authorize(Policy = "delete:employee")]
     public async Task<IActionResult> DeleteEmployee(int id)
     {
         var success = await _userService.DeleteEmployee(id);
@@ -67,7 +93,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("employees/add")]
-    [Authorize(Roles = "Manager,Admin")]
+    [Authorize(Policy = "write:employee")]
     public async Task<ActionResult<UserResponseDto>> CreateNewEmployee([FromBody] RegisterEmployeeDetailDto dto)
     {
         var createdUser = await _userService.CreateNewEmployee(dto);
@@ -75,7 +101,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "delete:user")]
     public async Task<IActionResult> DeleteUser(int id)
     {
         var success = await _userService.DeleteUser(id);

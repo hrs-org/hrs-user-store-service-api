@@ -16,20 +16,22 @@ namespace HRS.Test.API.Services;
 public class StoreServiceTests
 {
     private readonly IStoreRepository _storeRepository;
+    private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserRepository _userRepository;
-    private readonly IUserVerificationService _userVerificationService;
     private readonly IMapper _mapper;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly HttpClient _httpClient;
     private readonly StoreService _storeService;
+    private readonly IUserContextService _userContextService;
 
     public StoreServiceTests()
     {
         _storeRepository = Substitute.For<IStoreRepository>();
+        _auth0ManagementService = Substitute.For<IAuth0ManagementService>();
         _userRepository = Substitute.For<IUserRepository>();
-        _userVerificationService = Substitute.For<IUserVerificationService>();
         _mapper = Substitute.For<IMapper>();
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _userContextService = Substitute.For<IUserContextService>();
 
         var handler = new FakeHttpMessageHandler();
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
@@ -37,10 +39,11 @@ public class StoreServiceTests
 
         _storeService = new StoreService(
             _storeRepository,
+            _auth0ManagementService,
             _userRepository,
-            _userVerificationService,
             _mapper,
-            _httpClientFactory
+            _httpClientFactory,
+            _userContextService
         );
     }
 
@@ -122,16 +125,14 @@ public class StoreServiceTests
             Name = "New Store",
             Email = "admin@store.com",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "SecurePass123!"
+            LastName = "User"
         };
 
-        var verification = new UserVerification { Token = "test-token" };
 
         _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
         _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
-        _userVerificationService.CreateAsync(Arg.Any<int>(), "Email", Arg.Any<TimeSpan>()).Returns(verification);
         _storeRepository.BeginTransactionAsync().Returns(Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>());
+        _userContextService.GetAuth0Id().Returns("auth0|owner-1");
 
         // Act
         var result = await _storeService.RegisterStoreAsync(dto);
@@ -143,9 +144,9 @@ public class StoreServiceTests
         await _userRepository.Received(1).AddAsync(Arg.Is<User>(u =>
             u.Email == dto.Email &&
             u.FirstName == dto.FirstName &&
-            u.Role == UserRole.Admin &&
-            !u.IsVerified));
+            u.Role == UserRole.Owner));
         await _userRepository.Received(1).SaveChangesAsync();
+        await _auth0ManagementService.Received(1).SyncUserRoleAsync("auth0|owner-1", UserRole.Owner);
     }
 
     [Fact]
@@ -157,8 +158,7 @@ public class StoreServiceTests
             Name = "New Store",
             Email = "existing@store.com",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "SecurePass123!"
+            LastName = "User"
         };
 
         var existingUser = new User { Id = 1, Email = dto.Email };
@@ -178,8 +178,7 @@ public class StoreServiceTests
             Name = "Existing Store",
             Email = "admin@store.com",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "SecurePass123!"
+            LastName = "User"
         };
 
         var existingStore = new Store { Id = 1, Name = dto.Name };
@@ -192,20 +191,16 @@ public class StoreServiceTests
     }
 
     [Fact]
-    public async Task RegisterStoreAsync_ThrowsArgumentException_WhenPasswordTooShort()
+    public async Task RegisterStoreAsync_ThrowsArgumentException_WhenEmailMissing()
     {
         // Arrange
         var dto = new RegisterStoreDto
         {
             Name = "New Store",
-            Email = "admin@store.com",
+            Email = "   ",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "short"
+            LastName = "User"
         };
-
-        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
-        _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _storeService.RegisterStoreAsync(dto));

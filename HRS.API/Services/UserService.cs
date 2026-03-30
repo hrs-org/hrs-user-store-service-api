@@ -11,22 +11,22 @@ namespace HRS.API.Services;
 public class UserService : IUserService
 {
     private readonly IMapper _mapper;
+    private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserContextService _userContextService;
     private readonly IUserRepository _userRepository;
-    private readonly IUserVerificationService _userVerificationService;
     private readonly HttpClient _httpClient;
 
     public UserService(
         IMapper mapper,
+        IAuth0ManagementService auth0ManagementService,
         IUserRepository userRepository,
         IUserContextService userContextService,
-        IUserVerificationService userVerificationService,
         IHttpClientFactory httpClientFactory)
     {
         _mapper = mapper;
+        _auth0ManagementService = auth0ManagementService;
         _userRepository = userRepository;
         _userContextService = userContextService;
-        _userVerificationService = userVerificationService;
         _httpClient = httpClientFactory.CreateClient("EmailService");
     }
 
@@ -44,33 +44,37 @@ public class UserService : IUserService
 
     public async Task<bool> Register(RegisterDto dto)
     {
-        var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
-        if (existingUser != null)
-            throw new InvalidOperationException("User with this email already exists.");
-        if (dto.Password.Length < 8)
-            throw new ArgumentException("Password must be at least 8 characters long.");
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            throw new ArgumentException("Email is required");
 
-        var user = _mapper.Map<User>(dto);
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-        user.IsVerified = false;
+        var normalizedEmail = dto.Email.Trim();
+        var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail);
+        if (existingUser != null)
+            throw new InvalidOperationException("User with this email already exists");
+
+        var user = new User
+        {
+            Auth0UserId = _userContextService.GetAuth0Id(),
+            FirstName = dto.FirstName.Trim(),
+            LastName = dto.LastName.Trim(),
+            Email = normalizedEmail,
+            Role = UserRole.Customer,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
         await _userRepository.AddAsync(user);
         await _userRepository.SaveChangesAsync();
+        await _auth0ManagementService.SyncUserRoleAsync(user.Auth0UserId, UserRole.Customer);
+        await _auth0ManagementService.SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
 
-        var verification = await _userVerificationService.CreateAsync(
-            user.Id,
-            "Email",
-            TimeSpan.FromHours(24)
-        );
+        return true;
+    }
 
-        var verificationRequest = new
-        {
-            Email = user.Email,
-            VerificationToken = verification.Token,
-            FirstName = user.FirstName
-        };
-        var response = await _httpClient.PostAsJsonAsync("/api/email/send-verification", verificationRequest);
-        response.EnsureSuccessStatusCode();
+    public async Task<bool> SyncCurrentUserMetadataAsync()
+    {
+        var user = await _userContextService.GetUserAsync();
+        await _auth0ManagementService.SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
         return true;
     }
 
@@ -85,7 +89,7 @@ public class UserService : IUserService
     public async Task<List<UserResponseDto>> GetEmployees()
     {
         var user = await _userContextService.GetUserAsync();
-        var employee = await _userRepository.GetAllEmployee(user.StoreId, user.Role == UserRole.Admin);
+        var employee = await _userRepository.GetAllEmployee(user.StoreId/*, user.Role == UserRole.Admin*/);
         return _mapper.Map<List<UserResponseDto>>(employee);
     }
 
@@ -94,17 +98,20 @@ public class UserService : IUserService
         var editor = await _userContextService.GetUserAsync();
         var employee = await _userRepository.GetByIdAsync(dto.Id);
         if (employee == null) throw new KeyNotFoundException("User not found.");
-        if (employee.Role == UserRole.Customer) throw new InvalidOperationException("Cannot update a customer to an employee.");
+        // if (employee.Role == UserRole.Customer) throw new InvalidOperationException("Cannot update a customer to an employee.");
 
-        if (dto.Role == "Employee" || dto.Role == "Manager")
+        if (Enum.TryParse<UserRole>(dto.Role, true, out var parsedRole) &&
+            (parsedRole == UserRole.Employee || parsedRole == UserRole.Manager || parsedRole == UserRole.Admin))
         {
-            var role = Enum.Parse<UserRole>(dto.Role);
             employee.FirstName = dto.FirstName;
             employee.LastName = dto.LastName;
             employee.Email = dto.Email;
-            employee.Role = role;
+            employee.Role = parsedRole;
             employee.UpdatedAt = DateTime.UtcNow;
             employee.UpdatedBy = editor.Id;
+
+            await _auth0ManagementService.SyncUserRoleAsync(employee.Auth0UserId, parsedRole);
+            await _auth0ManagementService.SyncUserMetadataAsync(employee.Auth0UserId, employee.Id, employee.StoreId);
         }
         else
         {
@@ -118,7 +125,7 @@ public class UserService : IUserService
     public async Task<bool> DeleteEmployee(int id)
     {
         var employee = await _userRepository.GetByIdAsync(id) ?? throw new KeyNotFoundException("User not found.");
-        if (employee.Role == UserRole.Customer) throw new InvalidOperationException("Cannot delete a customer as an employee.");
+        // if (employee.Role == UserRole.Customer) throw new InvalidOperationException("Cannot delete a customer as an employee.");
 
         _userRepository.Remove(employee);
         await _userRepository.SaveChangesAsync();
@@ -129,27 +136,22 @@ public class UserService : IUserService
     {
         var user = _mapper.Map<User>(dto);
         var editor = await _userContextService.GetUserAsync();
-        var OriginPassword = Guid.NewGuid().ToString("N")[..8];
         user.CreatedAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
         user.UpdatedBy = editor.Id;
         user.StoreId = editor.StoreId;
-        user.IsVerified = true;
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(OriginPassword);
 
         await _userRepository.AddAsync(user);
         await _userRepository.SaveChangesAsync();
 
-        var SendEmployeeWelcomeEmailRequest = new
+        var sendEmployeeWelcomeEmailRequest = new
         {
             Email = user.Email,
-            Password = OriginPassword,
             FirstName = user.FirstName
         };
-        var response = await _httpClient.PostAsJsonAsync("/api/email/send-employee-welcome", SendEmployeeWelcomeEmailRequest);
+        var response = await _httpClient.PostAsJsonAsync("/api/email/send-employee-welcome", sendEmployeeWelcomeEmailRequest);
         response.EnsureSuccessStatusCode();
 
-        //Send email to user with password setup link
         return _mapper.Map<UserResponseDto>(user);
     }
 }

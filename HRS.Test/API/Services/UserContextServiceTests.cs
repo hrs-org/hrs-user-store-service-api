@@ -46,8 +46,6 @@ public class UserContextServiceTests
             FirstName = "Test",
             LastName = "User",
             Email = "test@hrs.com",
-            PasswordHash = "hash",
-            IsVerified = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -83,8 +81,6 @@ public class UserContextServiceTests
             FirstName = "Test",
             LastName = "User",
             Email = "test@hrs.com",
-            PasswordHash = "hash",
-            IsVerified = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -118,8 +114,6 @@ public class UserContextServiceTests
             LastName = "User",
             Email = "test@hrs.com",
             Role = UserRole.Admin,
-            PasswordHash = "hash",
-            IsVerified = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

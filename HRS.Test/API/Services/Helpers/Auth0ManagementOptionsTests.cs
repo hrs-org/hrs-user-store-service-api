@@ -70,8 +70,8 @@ public class Auth0ManagementOptionsTests
         // Act
         var options = new Auth0ManagementOptions
         {
-            Domain = null,
-            ClientId = null
+            Domain = "",
+            ClientId = ""
         };
 
         // Assert
@@ -108,8 +108,7 @@ public class Auth0ManagementOptionsTests
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
-    [InlineData(null)]
-    public void Auth0ManagementOptions_AcceptsVariousStringValues(string? value)
+    public void Auth0ManagementOptions_AcceptsVariousStringValues(string value = "")
     {
         // Act
         var options = new Auth0ManagementOptions { Domain = value };

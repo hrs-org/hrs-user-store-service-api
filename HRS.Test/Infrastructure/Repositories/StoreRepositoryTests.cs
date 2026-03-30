@@ -96,7 +96,7 @@ public class StoreRepositoryTests
         await repo.AddAsync(store);
         await repo.SaveChangesAsync();
 
-        var user = new HRS.Domain.Entities.User { FirstName = "F", LastName = "L", Email = "u@e.com", StoreId = store.Id };
+        var user = new HRS.Domain.Entities.User { Auth0UserId = "auth0|user1", FirstName = "F", LastName = "L", Email = "u@e.com", StoreId = store.Id };
         db.Users.Add(user);
         await db.SaveChangesAsync();
 

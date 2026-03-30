@@ -26,19 +26,31 @@ public class UserContextServiceTests
         _mockContextService = new UserContextService(_httpContextAccessor, _userRepository, _mapper);
     }
 
+    private void SetAuthenticatedUser(string auth0Id)
+    {
+        var identity = new ClaimsIdentity(new[] { new Claim("sub", auth0Id) }, authenticationType: "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+        var context = Substitute.For<HttpContext>();
+        context.User.Returns(principal);
+        _httpContextAccessor.HttpContext.Returns(context);
+    }
+
+    private void SetUnauthenticatedUser()
+    {
+        var identity = new ClaimsIdentity();
+        var principal = new ClaimsPrincipal(identity);
+        var context = Substitute.For<HttpContext>();
+        context.User.Returns(principal);
+        _httpContextAccessor.HttpContext.Returns(context);
+    }
+
     [Fact]
     public async Task GetUserAsync_ReturnsUser_WhenAuthenticated()
     {
         // Arrange
         var userId = 1;
-        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
-        var identity = Substitute.For<ClaimsIdentity>();
-        identity.IsAuthenticated.Returns(true);
-        identity.FindFirst(ClaimTypes.NameIdentifier).Returns(claims[0]);
-        var principal = new ClaimsPrincipal(identity);
-        var context = Substitute.For<HttpContext>();
-        context.User.Returns(principal);
-        _httpContextAccessor.HttpContext.Returns(context);
+        const string auth0Id = "auth0|user-1";
+        SetAuthenticatedUser(auth0Id);
 
         var user = new User
         {
@@ -49,7 +61,7 @@ public class UserContextServiceTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        _userRepository.GetByIdAsync(userId).Returns(user);
+        _userRepository.GetByAuth0IdAsync(auth0Id).Returns(user);
 
         // Act
         var result = await _mockContextService.GetUserAsync();
@@ -66,14 +78,8 @@ public class UserContextServiceTests
     {
         // Arrange
         var userId = 1;
-        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
-        var identity = Substitute.For<ClaimsIdentity>();
-        identity.IsAuthenticated.Returns(true);
-        identity.FindFirst(ClaimTypes.NameIdentifier).Returns(claims[0]);
-        var principal = new ClaimsPrincipal(identity);
-        var context = Substitute.For<HttpContext>();
-        context.User.Returns(principal);
-        _httpContextAccessor.HttpContext.Returns(context);
+        const string auth0Id = "auth0|user-1";
+        SetAuthenticatedUser(auth0Id);
 
         var user = new User
         {
@@ -84,7 +90,7 @@ public class UserContextServiceTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        _userRepository.GetByIdAsync(userId).Returns(user);
+        _userRepository.GetByAuth0IdAsync(auth0Id).Returns(user);
 
         // Act
         var result = await _mockContextService.GetUserIdAsync();
@@ -98,14 +104,8 @@ public class UserContextServiceTests
     {
         // Arrange
         var userId = 1;
-        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
-        var identity = Substitute.For<ClaimsIdentity>();
-        identity.IsAuthenticated.Returns(true);
-        identity.FindFirst(ClaimTypes.NameIdentifier).Returns(claims[0]);
-        var principal = new ClaimsPrincipal(identity);
-        var context = Substitute.For<HttpContext>();
-        context.User.Returns(principal);
-        _httpContextAccessor.HttpContext.Returns(context);
+        const string auth0Id = "auth0|user-1";
+        SetAuthenticatedUser(auth0Id);
 
         var user = new User
         {
@@ -125,7 +125,7 @@ public class UserContextServiceTests
             Email = "test@hrs.com",
             Role = nameof(UserRole.Admin)
         };
-        _userRepository.GetByIdAsync(userId).Returns(user);
+        _userRepository.GetByAuth0IdAsync(auth0Id).Returns(user);
         _mapper.Map<UserResponseDto>(user).Returns(userDto);
 
         // Act
@@ -139,12 +139,7 @@ public class UserContextServiceTests
     public async Task GetUserAsync_Throws_WhenNotAuthenticated()
     {
         // Arrange
-        var identity = Substitute.For<ClaimsIdentity>();
-        identity.IsAuthenticated.Returns(false);
-        var principal = new ClaimsPrincipal(identity);
-        var context = Substitute.For<HttpContext>();
-        context.User.Returns(principal);
-        _httpContextAccessor.HttpContext.Returns(context);
+        SetUnauthenticatedUser();
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _mockContextService.GetUserAsync());
@@ -154,9 +149,7 @@ public class UserContextServiceTests
     public async Task GetUserAsync_Throws_WhenUserIdClaimMissing()
     {
         // Arrange
-        var identity = Substitute.For<ClaimsIdentity>();
-        identity.IsAuthenticated.Returns(true);
-        identity.FindFirst(ClaimTypes.NameIdentifier).Returns((Claim?)null!);
+        var identity = new ClaimsIdentity(authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
         var context = Substitute.For<HttpContext>();
         context.User.Returns(principal);
@@ -170,17 +163,10 @@ public class UserContextServiceTests
     public async Task GetUserAsync_Throws_WhenUserNotFound()
     {
         // Arrange
-        var userId = 2;
-        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
-        var identity = Substitute.For<ClaimsIdentity>();
-        identity.IsAuthenticated.Returns(true);
-        identity.FindFirst(ClaimTypes.NameIdentifier).Returns(claims[0]);
-        var principal = new ClaimsPrincipal(identity);
-        var context = Substitute.For<HttpContext>();
-        context.User.Returns(principal);
-        _httpContextAccessor.HttpContext.Returns(context);
+        const string auth0Id = "auth0|user-2";
+        SetAuthenticatedUser(auth0Id);
 
-        _userRepository.GetByIdAsync(userId).Returns((User?)null!);
+        _userRepository.GetByAuth0IdAsync(auth0Id).Returns((User?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _mockContextService.GetUserAsync());

@@ -367,6 +367,123 @@ public class UserServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => _userService.CreateNewEmployee(dto));
     }
+
+    [Fact]
+    public async Task SyncCurrentUserMetadataAsync_SyncsMetadata_WhenUserExists()
+    {
+        // Arrange
+        var user = new User { Id = 1, Auth0UserId = "auth0|user123", StoreId = 5 };
+        _userContextService.GetUserAsync().Returns(user);
+
+        // Act
+        var result = await _userService.SyncCurrentUserMetadataAsync();
+
+        // Assert
+        Assert.True(result);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
+    }
+
+    [Fact]
+    public async Task SyncCurrentUserMetadataAsync_SyncsMetadata_WhenUserHasNoStore()
+    {
+        // Arrange
+        var user = new User { Id = 1, Auth0UserId = "auth0|user456", StoreId = null };
+        _userContextService.GetUserAsync().Returns(user);
+
+        // Act
+        var result = await _userService.SyncCurrentUserMetadataAsync();
+
+        // Assert
+        Assert.True(result);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
+    }
+
+    [Fact]
+    public async Task GetUserById_ThrowsKeyNotFoundException_WhenUserNotFound()
+    {
+        // Arrange
+        _userRepository.GetByIdAsync(999).Returns((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _userService.GetUserById(999));
+    }
+
+    [Fact]
+    public async Task UpdateEmployee_SyncsUserMetadata_AfterRoleUpdate()
+    {
+        // Arrange
+        var editor = new User { Id = 99, Role = UserRole.Admin };
+        var employee = new User { Id = 1, Role = UserRole.Employee, Auth0UserId = "auth0|emp-upd", StoreId = 1 };
+        var dto = new UpdateEmployeeDto { Id = 1, Role = "Admin", FirstName = "F", LastName = "L", Email = "e@x.com" };
+        var respond = new UserResponseDto { Id = 1, Role = "Admin", FirstName = "F", LastName = "L", Email = "e@x.com" };
+
+        _userContextService.GetUserAsync().Returns(editor);
+        _userRepository.GetByIdAsync(dto.Id).Returns(employee);
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(respond);
+
+        // Act
+        var result = await _userService.UpdateEmployee(dto);
+
+        // Assert
+        Assert.NotNull(result);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(employee.Auth0UserId, employee.Id, employee.StoreId);
+    }
+
+    [Fact]
+    public async Task DeleteEmployee_Throws_WhenEmployeeNotFound()
+    {
+        // Arrange
+        _userRepository.GetByIdAsync(999).Returns((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.DeleteEmployee(999));
+    }
+
+    [Fact]
+    public async Task GetEmployees_CallsRepositoryWithCorrectStoreId()
+    {
+        // Arrange
+        var user = new User { Id = 1, Role = UserRole.Manager, StoreId = 5 };
+        var employees = new List<User> { new() { Id = 2, Role = UserRole.Employee } };
+        var employeeDtos = new List<UserResponseDto>
+        {
+            new() { Id = 2, Role = "Employee", FirstName = "Test", LastName = "Emp", Email = "test@emp.com" }
+        };
+
+        _userContextService.GetUserAsync().Returns(user);
+        _userRepository.GetAllEmployee(5).Returns(employees);
+        _mapper.Map<List<UserResponseDto>>(employees).Returns(employeeDtos);
+
+        // Act
+        var result = await _userService.GetEmployees();
+
+        // Assert
+        Assert.Equal(employeeDtos, result);
+        await _userRepository.Received(1).GetAllEmployee(5);
+    }
+
+    [Fact]
+    public async Task Register_SendsEmailNotification_WhenEmployeeCreated()
+    {
+        // Arrange
+        var dto = new RegisterEmployeeDetailDto { FirstName = "Test", LastName = "Emp", Email = "test@emp.com", Role = "Employee" };
+        var user = new User { Id = 1, Email = dto.Email };
+        var editor = new User { Id = 99 };
+        var userDto = new UserResponseDto { Id = 1, Email = dto.Email, FirstName = "Test", LastName = "Emp", Role = "Employee" };
+
+        _mapper.Map<User>(dto).Returns(user);
+        _userContextService.GetUserAsync().Returns(editor);
+        _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
+        _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
+        _mapper.Map<UserResponseDto>(user).Returns(userDto);
+
+        // Act
+        var result = await _userService.CreateNewEmployee(dto);
+
+        // Assert
+        Assert.NotNull(result);
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u => u.Email == dto.Email));
+    }
 }
 
 public class FakeHttpMessageHandler : HttpMessageHandler

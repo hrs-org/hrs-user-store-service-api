@@ -23,17 +23,29 @@ public class UserContextService : IUserContextService
 
     public async Task<User> GetUserAsync()
     {
+        var user = await GetUserByAuth0IdAsync();
+
+        return user ?? throw new UnauthorizedAccessException("Authenticated user is not linked in the system");
+    }
+
+    public string GetAuth0Id()
+    {
         var principal = _httpContextAccessor.HttpContext?.User;
-        if (principal?.Identity?.IsAuthenticated != true) throw new UnauthorizedAccessException("User is not authenticated");
+        if (principal?.Identity?.IsAuthenticated != true)
+            throw new UnauthorizedAccessException("User is not authenticated");
 
-        var id = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-        var userIdAvailable = int.TryParse(id, out var userId);
+        var auth0Id = principal.FindFirstValue("sub");
 
-        if (!userIdAvailable) throw new UnauthorizedAccessException("User ID claim not found");
+        if (string.IsNullOrEmpty(auth0Id))
+            throw new UnauthorizedAccessException("Auth0 ID (sub claim) not found in token");
 
-        var user = await _userRepository.GetByIdAsync(userId);
+        return auth0Id;
+    }
 
-        return user ?? throw new UnauthorizedAccessException("User not found");
+    public async Task<User?> GetUserByAuth0IdAsync()
+    {
+        var auth0Id = GetAuth0Id();
+        return await _userRepository.GetByAuth0IdAsync(auth0Id);
     }
 
     public async Task<UserResponseDto> GetUserDtoAsync()

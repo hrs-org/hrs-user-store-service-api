@@ -6,20 +6,20 @@ using Microsoft.EntityFrameworkCore;
 namespace HRS.Domain.Entities;
 
 [Table("Users")]
-[Index(nameof(Email), IsUnique = true)]
+[Index(nameof(Auth0UserId), IsUnique = true)]
 public class User
 {
     [Key] public int Id { get; set; }
+
+    [Required]
+    [MaxLength(100)]
+    public string Auth0UserId { get; set; } = null!;
 
     [Required][MaxLength(100)] public string FirstName { get; set; } = null!;
 
     [Required][MaxLength(100)] public string LastName { get; set; } = null!;
 
     [Required][MaxLength(150)] public string Email { get; set; } = null!;
-
-    [Required] public string PasswordHash { get; set; } = null!;
-
-    public bool IsVerified { get; set; }
     public UserRole Role { get; set; } = UserRole.Customer;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -33,8 +33,4 @@ public class User
 
     [ForeignKey(nameof(UpdatedBy))] public virtual User? UpdatedByUser { get; set; }
     [ForeignKey(nameof(StoreId))] public virtual Store? Store { get; set; }
-
-    // Navigation Properties
-    public virtual ICollection<UserSession> Sessions { get; set; } = new List<UserSession>();
-    public virtual ICollection<UserVerification> Verifications { get; set; } = new List<UserVerification>();
 }

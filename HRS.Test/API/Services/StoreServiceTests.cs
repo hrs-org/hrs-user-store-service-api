@@ -16,20 +16,22 @@ namespace HRS.Test.API.Services;
 public class StoreServiceTests
 {
     private readonly IStoreRepository _storeRepository;
+    private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserRepository _userRepository;
-    private readonly IUserVerificationService _userVerificationService;
     private readonly IMapper _mapper;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly HttpClient _httpClient;
     private readonly StoreService _storeService;
+    private readonly IUserContextService _userContextService;
 
     public StoreServiceTests()
     {
         _storeRepository = Substitute.For<IStoreRepository>();
+        _auth0ManagementService = Substitute.For<IAuth0ManagementService>();
         _userRepository = Substitute.For<IUserRepository>();
-        _userVerificationService = Substitute.For<IUserVerificationService>();
         _mapper = Substitute.For<IMapper>();
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _userContextService = Substitute.For<IUserContextService>();
 
         var handler = new FakeHttpMessageHandler();
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
@@ -37,10 +39,11 @@ public class StoreServiceTests
 
         _storeService = new StoreService(
             _storeRepository,
+            _auth0ManagementService,
             _userRepository,
-            _userVerificationService,
             _mapper,
-            _httpClientFactory
+            _httpClientFactory,
+            _userContextService
         );
     }
 
@@ -122,16 +125,14 @@ public class StoreServiceTests
             Name = "New Store",
             Email = "admin@store.com",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "SecurePass123!"
+            LastName = "User"
         };
 
-        var verification = new UserVerification { Token = "test-token" };
 
         _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
         _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
-        _userVerificationService.CreateAsync(Arg.Any<int>(), "Email", Arg.Any<TimeSpan>()).Returns(verification);
         _storeRepository.BeginTransactionAsync().Returns(Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>());
+        _userContextService.GetAuth0Id().Returns("auth0|owner-1");
 
         // Act
         var result = await _storeService.RegisterStoreAsync(dto);
@@ -143,9 +144,9 @@ public class StoreServiceTests
         await _userRepository.Received(1).AddAsync(Arg.Is<User>(u =>
             u.Email == dto.Email &&
             u.FirstName == dto.FirstName &&
-            u.Role == UserRole.Admin &&
-            !u.IsVerified));
+            u.Role == UserRole.Owner));
         await _userRepository.Received(1).SaveChangesAsync();
+        await _auth0ManagementService.Received(1).SyncUserRoleAsync("auth0|owner-1", UserRole.Owner);
     }
 
     [Fact]
@@ -157,8 +158,7 @@ public class StoreServiceTests
             Name = "New Store",
             Email = "existing@store.com",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "SecurePass123!"
+            LastName = "User"
         };
 
         var existingUser = new User { Id = 1, Email = dto.Email };
@@ -178,8 +178,7 @@ public class StoreServiceTests
             Name = "Existing Store",
             Email = "admin@store.com",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "SecurePass123!"
+            LastName = "User"
         };
 
         var existingStore = new Store { Id = 1, Name = dto.Name };
@@ -192,23 +191,231 @@ public class StoreServiceTests
     }
 
     [Fact]
-    public async Task RegisterStoreAsync_ThrowsArgumentException_WhenPasswordTooShort()
+    public async Task RegisterStoreAsync_ThrowsArgumentException_WhenEmailMissing()
     {
         // Arrange
         var dto = new RegisterStoreDto
         {
             Name = "New Store",
-            Email = "admin@store.com",
+            Email = "   ",
             FirstName = "Admin",
-            LastName = "User",
-            Password = "short"
+            LastName = "User"
         };
-
-        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
-        _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _storeService.RegisterStoreAsync(dto));
         await _storeRepository.DidNotReceive().AddAsync(Arg.Any<Store>());
+    }
+
+    [Fact]
+    public async Task RegisterStoreAsync_ThrowsArgumentException_WhenStoreName_IsMissing()
+    {
+        // Arrange
+        var dto = new RegisterStoreDto
+        {
+            Name = "   ", // Empty store name
+            Email = "admin@store.com",
+            FirstName = "Admin",
+            LastName = "User"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _storeService.RegisterStoreAsync(dto));
+    }
+
+    [Fact]
+    public async Task RegisterStoreAsync_CreatesStoreWithOwnerUser_WhenAllValid()
+    {
+        // Arrange
+        var dto = new RegisterStoreDto
+        {
+            Name = "Premium Store",
+            Email = "owner@premium.com",
+            FirstName = "Premium",
+            LastName = "Owner",
+            Description = "A premium store",
+            Address = "123 Main St",
+            PhoneNumber = "555-1234"
+        };
+
+        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
+        _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
+        var transaction = Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+        _storeRepository.BeginTransactionAsync().Returns(transaction);
+        _userContextService.GetAuth0Id().Returns("auth0|premium-owner");
+
+        // Act
+        var result = await _storeService.RegisterStoreAsync(dto);
+
+        // Assert
+        Assert.True(result);
+        await _storeRepository.Received(1).AddAsync(Arg.Is<Store>(s =>
+            s.Name == dto.Name &&
+            s.Description == dto.Description &&
+            s.Address == dto.Address &&
+            s.PhoneNumber == dto.PhoneNumber));
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(
+            "auth0|premium-owner",
+            Arg.Any<int>(),
+            Arg.Any<int>());
+        await transaction.Received(1).CommitAsync();
+    }
+
+    [Fact]
+    public async Task RegisterStoreAsync_RollsBackTransaction_WhenAddAsyncFails()
+    {
+        // Arrange
+        var dto = new RegisterStoreDto
+        {
+            Name = "Failed Store",
+            Email = "fail@store.com",
+            FirstName = "Failed",
+            LastName = "Owner"
+        };
+
+        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
+        _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
+        var transaction = Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+        _storeRepository.BeginTransactionAsync().Returns(transaction);
+        _storeRepository.AddAsync(Arg.Any<Store>()).Returns(Task.FromException(new Exception("Database error")));
+        _userContextService.GetAuth0Id().Returns("auth0|fail-owner");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<Exception>(() => _storeService.RegisterStoreAsync(dto));
+        await transaction.Received(1).RollbackAsync();
+    }
+
+    [Fact]
+    public async Task RegisterStoreAsync_SyncsOwnerMetadataWithStoreId()
+    {
+        // Arrange
+        var dto = new RegisterStoreDto
+        {
+            Name = "Sync Test Store",
+            Email = "synctest@store.com",
+            FirstName = "Sync",
+            LastName = "Test"
+        };
+
+        Store? capturedStore = null;
+        User? capturedUser = null;
+
+        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
+        _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
+        var transaction = Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+        _storeRepository.BeginTransactionAsync().Returns(transaction);
+        _userContextService.GetAuth0Id().Returns("auth0|sync-owner");
+
+        // Capture the store and user that are added
+        await _storeRepository.AddAsync(Arg.Do<Store>(s => capturedStore = s));
+        await _userRepository.AddAsync(Arg.Do<User>(u => capturedUser = u));
+
+        // Act
+        await _storeService.RegisterStoreAsync(dto);
+
+        // Assert
+        Assert.NotNull(capturedStore);
+        Assert.NotNull(capturedUser);
+        Assert.Equal(capturedStore.Id, capturedUser.StoreId);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(
+            "auth0|sync-owner",
+            capturedUser.Id,
+            capturedUser.StoreId);
+    }
+
+    [Fact]
+    public async Task RegisterStoreAsync_TrimsInputStrings()
+    {
+        // Arrange
+        var dto = new RegisterStoreDto
+        {
+            Name = "  Trimmed Store  ",
+            Email = "  trimmed@store.com  ",
+            FirstName = "  Trimmed  ",
+            LastName = "  Owner  "
+        };
+
+        _userRepository.GetByEmailAsync("trimmed@store.com").Returns((User?)null);
+        _storeRepository.GetByNameAsync("Trimmed Store").Returns((Store?)null);
+        var transaction = Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+        _storeRepository.BeginTransactionAsync().Returns(transaction);
+        _userContextService.GetAuth0Id().Returns("auth0|trimmed-owner");
+
+        // Act
+        await _storeService.RegisterStoreAsync(dto);
+
+        // Assert
+        await _storeRepository.Received(1).AddAsync(Arg.Is<Store>(s => s.Name == "Trimmed Store"));
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u =>
+            u.Email == "trimmed@store.com" &&
+            u.FirstName == "Trimmed" &&
+            u.LastName == "Owner"));
+    }
+
+    [Fact]
+    public async Task RegisterStoreAsync_SetsTimestamps_OnStoreAndUser()
+    {
+        // Arrange
+        var dto = new RegisterStoreDto
+        {
+            Name = "Timestamp Store",
+            Email = "timestamp@store.com",
+            FirstName = "Timestamp",
+            LastName = "User"
+        };
+
+        var beforeTime = DateTime.UtcNow;
+        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
+        _storeRepository.GetByNameAsync(dto.Name).Returns((Store?)null);
+        var transaction = Substitute.For<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+        _storeRepository.BeginTransactionAsync().Returns(transaction);
+        _userContextService.GetAuth0Id().Returns("auth0|timestamp-owner");
+
+        Store? addedStore = null;
+        User? addedUser = null;
+        await _storeRepository.AddAsync(Arg.Do<Store>(s => addedStore = s));
+        await _userRepository.AddAsync(Arg.Do<User>(u => addedUser = u));
+
+        // Act
+        await _storeService.RegisterStoreAsync(dto);
+        var afterTime = DateTime.UtcNow;
+
+        // Assert
+        Assert.NotNull(addedStore);
+        Assert.NotNull(addedUser);
+        Assert.True(addedStore.CreatedAt >= beforeTime && addedStore.CreatedAt <= afterTime);
+        Assert.True(addedStore.UpdatedAt >= beforeTime && addedStore.UpdatedAt <= afterTime);
+        Assert.True(addedUser.CreatedAt >= beforeTime && addedUser.CreatedAt <= afterTime);
+        Assert.True(addedUser.UpdatedAt >= beforeTime && addedUser.UpdatedAt <= afterTime);
+    }
+
+    [Fact]
+    public async Task GetAllStoresAsync_ReturnsEmptyList_WhenNoStores()
+    {
+        // Arrange
+        _storeRepository.GetAllAsync().Returns(new List<Store>());
+
+        // Act
+        var result = await _storeService.GetAllStoresAsync();
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetStoreByIdAsync_MapsStoreToDto_Correctly()
+    {
+        // Arrange
+        var store = new Store { Id = 1, Name = "Store 1", Description = "Desc 1" };
+        var storeDto = new StoreDto { Id = 1, Name = "Store 1", Description = "Desc 1" };
+        _storeRepository.GetByIdAsync(1).Returns(store);
+        _mapper.Map<StoreDto>(store).Returns(storeDto);
+
+        // Act
+        var result = await _storeService.GetStoreByIdAsync(1);
+
+        // Assert
+        Assert.Equal(storeDto.Name, result.Name);
+        _mapper.Received(1).Map<StoreDto>(store);
     }
 }

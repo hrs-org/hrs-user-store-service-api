@@ -7,6 +7,7 @@ public interface IUserService
     Task<IEnumerable<UserResponseDto>> GetUsers();
     Task<UserResponseDto> GetUserById(int id);
     Task<bool> Register(RegisterDto dto);
+    Task<bool> SyncCurrentUserMetadataAsync();
     Task<bool> DeleteUser(int id);
     Task<List<UserResponseDto>> GetEmployees();
     Task<UserResponseDto?> UpdateEmployee(UpdateEmployeeDto dto);

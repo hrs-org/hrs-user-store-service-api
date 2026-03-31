@@ -326,9 +326,16 @@ jobs:
                   IMAGE_TAG: ${{ needs.docker-build.outputs.image-tag }}
                   ACR_NAME: ${{ secrets.ACR_NAME }}
                   DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
-                  JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-                  JWT_ISSUER: ${{ secrets.JWT_ISSUER || 'https://auth.hrs.com' }}
-                  JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE || 'https://hrs-api' }}
+                  AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+                  AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
+                  AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
+                  AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
+                  AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
+                  AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_OWNER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_OWNER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID }}
+                  AUTH0_MANAGEMENT_MANAGER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_MANAGER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_ADMIN_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_ADMIN_ROLE_ID }}
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
                   EMAIL_SERVICE_ENDPOINT: ${{ secrets.EMAIL_SERVICE_ENDPOINT || 'http://localhost:5001' }}
               run: |
@@ -348,9 +355,16 @@ jobs:
                   docker run -d -p 5000:8080 --name hrs-user-service \
                     -e ASPNETCORE_ENVIRONMENT=Production \
                     -e ConnectionStrings__DefaultConnection="$DB_CONNECTION_STRING" \
-                    -e Jwt__Key="$JWT_SECRET_KEY" \
-                    -e Jwt__Issuer="$JWT_ISSUER" \
-                    -e Jwt__Audience="$JWT_AUDIENCE" \
+                    -e Auth0__Domain="$AUTH0_DOMAIN" \
+                    -e Auth0__Audience="$AUTH0_AUDIENCE" \
+                    -e Auth0Management__Domain="$AUTH0_MANAGEMENT_DOMAIN" \
+                    -e Auth0Management__ClientId="$AUTH0_MANAGEMENT_CLIENT_ID" \
+                    -e Auth0Management__ClientSecret="$AUTH0_MANAGEMENT_CLIENT_SECRET" \
+                    -e Auth0Management__CustomerRoleId="$AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID" \
+                    -e Auth0Management__OwnerRoleId="$AUTH0_MANAGEMENT_OWNER_ROLE_ID" \
+                    -e Auth0Management__EmployeeRoleId="$AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID" \
+                    -e Auth0Management__ManagerRoleId="$AUTH0_MANAGEMENT_MANAGER_ROLE_ID" \
+                    -e Auth0Management__AdminRoleId="$AUTH0_MANAGEMENT_ADMIN_ROLE_ID" \
                     -e AllowedOrigins="$ALLOWED_ORIGINS" \
                     -e EmailEndpoint="$EMAIL_SERVICE_ENDPOINT" \
                     "${ACR_NAME}.azurecr.io/hrs-user-service:${IMAGE_TAG}"

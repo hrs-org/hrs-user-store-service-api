@@ -1,16 +1,19 @@
+using System.Security.Claims;
 using System.Text;
 using FluentValidation;
 using HRS.API.Filters;
 using HRS.API.Middleware;
+using HRS.API.Services.Helpers;
 using HRS.API.Services;
 using HRS.API.Services.Interfaces;
 using HRS.API.Validators.Auth;
-
 using HRS.API.Validators.User;
+using HRS.Shared.Core.Authorization;
 using HRS.Domain.Interfaces;
 using HRS.Infrastructure;
 using HRS.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -18,23 +21,28 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IStoreService, StoreService>();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
-builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<IUserVerificationService, UserVerificationService>();
-builder.Services.AddScoped<IUserSessionService, UserSessionService>();
+builder.Services.AddScoped<IAuth0ManagementService, Auth0ManagementService>();
 builder.Services.AddScoped(typeof(ICrudRepository<>), typeof(CrudRepository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IStoreRepository, StoreRepository>();
-builder.Services.AddScoped<IUserSessionRepository, UserSessionRepository>();
-builder.Services.AddScoped<IUserVerificationRepository, UserVerificationRepository>();
-builder.Services.AddScoped<IAppConfiguration, AppConfiguration>();
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.Configure<Auth0ManagementOptions>(builder.Configuration.GetSection("Auth0Management"));
 
 builder.Services.AddHttpClient("EmailService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["EmailEndpoint"]!);
+});
+
+builder.Services.AddHttpClient("Auth0ManagementApi", client =>
+{
+    var domain = builder.Configuration["Auth0Management:Domain"];
+    if (!string.IsNullOrWhiteSpace(domain))
+    {
+        client.BaseAddress = new Uri($"https://{domain}/api/v2/");
+    }
 });
 
 // Add services to the container.
@@ -87,22 +95,70 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddAutoMapper(cfg => { }, typeof(Program));
 
+var auth0Domain = builder.Configuration["Auth0:Domain"]!;
+var auth0Audience = builder.Configuration["Auth0:Audience"]!;
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = $"https://{auth0Domain}/";
+        options.Audience = auth0Audience;
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            )
+            ValidIssuer = $"https://{auth0Domain}/",
+            ValidAudience = auth0Audience,
+            NameClaimType = "sub"
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var claims = context.Principal?.Claims.ToList() ?? new List<Claim>();
+                var subClaim = claims.FirstOrDefault(c => c.Type == "sub");
+                if (subClaim != null && !claims.Any(c => c.Type == ClaimTypes.NameIdentifier))
+                {
+                    var claimsIdentity = (ClaimsIdentity)context.Principal?.Identity!;
+                    claimsIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subClaim.Value));
+                }
+                await Task.CompletedTask;
+            }
         };
     });
+
+// Add authorization with scope-based policies
+builder.Services.AddAuthorization(options =>
+{
+    // User management scopes
+    options.AddPolicy("read:user", policy =>
+        policy.Requirements.Add(new PermissionRequirement("read:user")));
+    options.AddPolicy("write:user", policy =>
+        policy.Requirements.Add(new PermissionRequirement("write:user")));
+    options.AddPolicy("delete:user", policy =>
+        policy.Requirements.Add(new PermissionRequirement("delete:user")));
+
+    // Store management scopes
+    options.AddPolicy("read:store", policy =>
+        policy.Requirements.Add(new PermissionRequirement("read:store")));
+    options.AddPolicy("write:store", policy =>
+        policy.Requirements.Add(new PermissionRequirement("write:store")));
+
+    // Employee management scopes
+    options.AddPolicy("read:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("read:employee")));
+    options.AddPolicy("update:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("update:employee")));
+    options.AddPolicy("delete:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("delete:employee")));
+    options.AddPolicy("write:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("write:employee")));
+});
+
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddCors(options =>
 {

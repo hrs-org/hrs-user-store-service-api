@@ -1,6 +1,7 @@
 using HRS.Shared.Core.Dtos;
 using HRS.API.Contracts.DTOs.Store;
 using HRS.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HRS.API.Controllers;
@@ -17,6 +18,7 @@ public class StoreController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = "read:store")]
     public async Task<ActionResult<StoreDto>> GetStoreById(int id)
     {
         var store = await _storeService.GetStoreByIdAsync(id);
@@ -24,6 +26,7 @@ public class StoreController : ControllerBase
     }
 
     [HttpGet("users/{userId:int}")]
+    [Authorize(Policy = "read:store")]
     public async Task<ActionResult<StoreDto>> GetStoreByUserId(int userId)
     {
         var store = await _storeService.GetStoreByUserIdAsync(userId);
@@ -31,6 +34,7 @@ public class StoreController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = "read:store")]
     public async Task<ActionResult> GetAllStores([FromQuery] int? userId)
     {
         if (userId.HasValue)

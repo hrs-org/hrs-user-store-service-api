@@ -37,7 +37,6 @@ public class UserProfileTests
             LastName = "Doe",
             Email = "john.doe@mail.com",
             Role = UserRole.Admin,
-            PasswordHash = "hash"
         };
 
         var dto = _mapper.Map<UserResponseDto>(user);
@@ -47,25 +46,6 @@ public class UserProfileTests
         dto.LastName.Should().Be("Doe");
         dto.Email.Should().Be("john.doe@mail.com");
         dto.Role.Should().Be("Admin");
-    }
-
-    [Fact]
-    public void Should_Map_RegisterDto_To_User_IgnoringPasswordHash()
-    {
-        var registerDto = new RegisterDto
-        {
-            FirstName = "Jane",
-            LastName = "Smith",
-            Email = "jane.smith@mail.com",
-            Password = "password123"
-        };
-
-        var user = _mapper.Map<User>(registerDto);
-
-        user.FirstName.Should().Be("Jane");
-        user.LastName.Should().Be("Smith");
-        user.Email.Should().Be("jane.smith@mail.com");
-        user.PasswordHash.Should().BeNull(); // PasswordHash ถูก ignore
     }
 
     [Fact]
@@ -85,7 +65,6 @@ public class UserProfileTests
         user.LastName.Should().Be("Brown");
         user.Email.Should().Be("alice@mail.com");
         user.Role.Should().Be(UserRole.Employee); // Role แปลงจาก string เป็น enum
-        user.PasswordHash.Should().BeNull(); // PasswordHash ถูก ignore
     }
 
     [Fact]

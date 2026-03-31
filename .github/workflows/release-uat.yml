@@ -102,13 +102,29 @@ jobs:
                   DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
                   MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
                   MYSQL_USER_PASSWORD: ${{ secrets.MYSQL_USER_PASSWORD }}
-                  JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+                  AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+                  AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
+                  AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
+                  AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
+                  AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
+                  AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_OWNER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_OWNER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID }}
+                  AUTH0_MANAGEMENT_MANAGER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_MANAGER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_ADMIN_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_ADMIN_ROLE_ID }}
               run: |
                   missing=0
 
-                  for name in DB_CONNECTION_STRING MYSQL_ROOT_PASSWORD MYSQL_USER_PASSWORD JWT_SECRET_KEY; do
+                  for name in DB_CONNECTION_STRING MYSQL_ROOT_PASSWORD MYSQL_USER_PASSWORD AUTH0_DOMAIN AUTH0_AUDIENCE AUTH0_MANAGEMENT_DOMAIN AUTH0_MANAGEMENT_CLIENT_ID AUTH0_MANAGEMENT_CLIENT_SECRET; do
                     if [ -z "${!name}" ]; then
                       echo "❌ Missing required GitHub secret: $name"
+                      missing=1
+                    fi
+                  done
+
+                  for name in AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID AUTH0_MANAGEMENT_OWNER_ROLE_ID AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID AUTH0_MANAGEMENT_MANAGER_ROLE_ID AUTH0_MANAGEMENT_ADMIN_ROLE_ID; do
+                    if [ -z "${!name}" ]; then
+                      echo "❌ Missing required GitHub variable: $name"
                       missing=1
                     fi
                   done
@@ -126,9 +142,16 @@ jobs:
                   MYSQL_USERNAME: "${{ secrets.MYSQL_USERNAME || 'hrsuser' }}"
                   DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
                   ACR_NAME: ${{ secrets.ACR_NAME }}
-                  JWT_ISSUER: "${{ secrets.JWT_ISSUER || 'https://auth.hrs.com' }}"
-                  JWT_AUDIENCE: "${{ secrets.JWT_AUDIENCE || 'https://hrs-api' }}"
-                  JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+                  AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+                  AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
+                  AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
+                  AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
+                  AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
+                  AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_OWNER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_OWNER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID }}
+                  AUTH0_MANAGEMENT_MANAGER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_MANAGER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_ADMIN_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_ADMIN_ROLE_ID }}
                   ALLOWED_ORIGINS: "${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}"
                   EMAIL_SERVICE_ENDPOINT: "${{ secrets.EMAIL_SERVICE_ENDPOINT || 'http://localhost:5001' }}"
               run: |
@@ -144,16 +167,23 @@ jobs:
                   sed "s|__ACR_NAME__|$ACR_NAME|g" k8s/deployment-uat.yaml | \
                   sed "s|__IMAGE_TAG__|$IMAGE_TAG|g" | \
                   sed "s|__DB_CONNECTION_STRING__|$DB_CONNECTION_STRING|g" | \
-                  sed "s|__JWT_ISSUER__|$JWT_ISSUER|g" | \
-                  sed "s|__JWT_AUDIENCE__|$JWT_AUDIENCE|g" | \
-                  sed "s|__JWT_SECRET_KEY__|$JWT_SECRET_KEY|g" | \
+                  sed "s|__AUTH0_DOMAIN__|$AUTH0_DOMAIN|g" | \
+                  sed "s|__AUTH0_AUDIENCE__|$AUTH0_AUDIENCE|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_DOMAIN__|$AUTH0_MANAGEMENT_DOMAIN|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_CLIENT_ID__|$AUTH0_MANAGEMENT_CLIENT_ID|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_CLIENT_SECRET__|$AUTH0_MANAGEMENT_CLIENT_SECRET|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID__|$AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_OWNER_ROLE_ID__|$AUTH0_MANAGEMENT_OWNER_ROLE_ID|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID__|$AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_MANAGER_ROLE_ID__|$AUTH0_MANAGEMENT_MANAGER_ROLE_ID|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_ADMIN_ROLE_ID__|$AUTH0_MANAGEMENT_ADMIN_ROLE_ID|g" | \
                   sed "s|__ALLOWED_ORIGINS__|$ALLOWED_ORIGINS|g" | \
                   sed "s|__EMAIL_SERVICE_ENDPOINT__|$EMAIL_SERVICE_ENDPOINT|g" \
                   > k8s/deployment-final.yaml
 
                   # Show the final manifest for debugging (mask sensitive values)
                   echo "=== Final Deployment Manifest (sensitive values masked) ==="
-                  cat k8s/deployment-final.yaml | grep -v "DB_CONNECTION_STRING" | grep -v "JWT_SECRET_KEY" || cat k8s/deployment-final.yaml
+                  cat k8s/deployment-final.yaml | grep -v "DB_CONNECTION_STRING" | grep -v "AUTH0_MANAGEMENT_CLIENT_SECRET" || cat k8s/deployment-final.yaml
 
                   echo "=== Final MySQL Manifest (sensitive values masked) ==="
                   cat k8s/mysql-statefulset-final.yaml | grep -v "root-password" | grep -v "user-password" || cat k8s/mysql-statefulset-final.yaml

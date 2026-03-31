@@ -14,26 +14,26 @@ namespace HRS.Test.API.Services;
 public class UserServiceTests
 {
     private readonly IMapper _mapper;
+    private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserContextService _userContextService;
     private readonly IUserRepository _userRepository;
     private readonly UserService _userService;
-    private readonly IUserVerificationService _userVerificationService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly HttpClient _httpClient;
 
     public UserServiceTests()
     {
         _mapper = Substitute.For<IMapper>();
+        _auth0ManagementService = Substitute.For<IAuth0ManagementService>();
         _userRepository = Substitute.For<IUserRepository>();
         _userContextService = Substitute.For<IUserContextService>();
-        _userVerificationService = Substitute.For<IUserVerificationService>();
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
 
         var handler = new FakeHttpMessageHandler();
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
         _httpClientFactory.CreateClient("EmailService").Returns(_httpClient);
 
-        _userService = new UserService(_mapper, _userRepository, _userContextService, _userVerificationService, _httpClientFactory);
+        _userService = new UserService(_mapper, _auth0ManagementService, _userRepository, _userContextService, _httpClientFactory);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class UserServiceTests
             }
         };
         _userContextService.GetUserAsync().Returns(user);
-        _userRepository.GetAllEmployee(user.StoreId, true).Returns(employees);
+        _userRepository.GetAllEmployee(user.StoreId).Returns(employees);
         _mapper.Map<List<UserResponseDto>>(employees).Returns(employeeDtos);
 
         // Act
@@ -140,11 +140,22 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task UpdateEmployee_Throws_WhenRoleIsCustomer()
+    public async Task UpdateEmployee_Updates_WhenRoleIsCustomerAndRoleInputIsValid()
     {
         // Arrange
-        var employee = new User { Id = 1, Role = UserRole.Customer };
+        var editor = new User { Id = 50, Role = UserRole.Manager };
+        var employee = new User { Id = 1, Role = UserRole.Customer, Auth0UserId = "auth0|employee-1" };
+        var mappedResponse = new UserResponseDto
+        {
+            Id = employee.Id,
+            FirstName = "Test",
+            LastName = "Name",
+            Email = "testname@email.com",
+            Role = "Employee"
+        };
+        _userContextService.GetUserAsync().Returns(editor);
         _userRepository.GetByIdAsync(1).Returns(employee);
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(mappedResponse);
         var dto = new UpdateEmployeeDto
         {
             Id = 1,
@@ -154,8 +165,14 @@ public class UserServiceTests
             Email = "testname@email.com"
         };
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _userService.UpdateEmployee(dto));
+        // Act
+        var result = await _userService.UpdateEmployee(dto);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Test", employee.FirstName);
+        Assert.Equal("Name", employee.LastName);
+        Assert.Equal("testname@email.com", employee.Email);
     }
 
     [Fact]
@@ -181,22 +198,24 @@ public class UserServiceTests
     public async Task Register_ReturnsTrue_WhenValid()
     {
         // Arrange
-        var dto = new RegisterDto { Email = "test@hrs.com", Password = "ValidPass123!", FirstName = "Test", LastName = "User" };
+        var dto = new RegisterDto { Email = "test@hrs.com", FirstName = "Test", LastName = "User" };
         var user = new User { Id = 1, Email = dto.Email, FirstName = dto.FirstName, LastName = dto.LastName };
-        var verification = new UserVerification { Token = "token" };
 
         _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
+        _userContextService.GetAuth0Id().Returns("auth0|customer-1");
         _mapper.Map<User>(dto).Returns(user);
-        _userVerificationService.CreateAsync(user.Id, "Email", Arg.Any<TimeSpan>()).Returns(verification);
-        // HttpClient 会被 FakeHttpMessageHandler 处理，自动返回成功
 
         // Act
         var result = await _userService.Register(dto);
 
         // Assert
         Assert.True(result);
-        await _userRepository.Received(1).AddAsync(user);
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u =>
+            u.Email == dto.Email &&
+            u.FirstName == dto.FirstName &&
+            u.LastName == dto.LastName));
         await _userRepository.Received(1).SaveChangesAsync();
+        await _auth0ManagementService.Received(1).SyncUserRoleAsync(Arg.Any<string>(), UserRole.Customer);
     }
 
     [Fact]
@@ -206,7 +225,6 @@ public class UserServiceTests
         var dto = new RegisterDto
         {
             Email = "test@hrs.com",
-            Password = "ValidPass123!",
             FirstName = "test",
             LastName = "name"
         };
@@ -218,17 +236,15 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task Register_Throws_WhenPasswordTooShort()
+    public async Task Register_Throws_WhenEmailIsMissing()
     {
         // Arrange
         var dto = new RegisterDto
         {
-            Email = "test@hrs.com",
-            Password = "short",
+            Email = "   ",
             FirstName = "test",
             LastName = "name"
         };
-        _userRepository.GetByEmailAsync(dto.Email).Returns((User?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _userService.Register(dto));
@@ -238,7 +254,7 @@ public class UserServiceTests
     public async Task UpdateEmployee_UpdatesEmployee_WhenValid()
     {
         var editor = new User { Id = 99, Role = UserRole.Admin };
-        var employee = new User { Id = 1, Role = UserRole.Employee };
+        var employee = new User { Id = 1, Role = UserRole.Employee, Auth0UserId = "auth0|employee-2" };
         var dto = new UpdateEmployeeDto { Id = 1, Role = "Manager", FirstName = "F", LastName = "L", Email = "e@x.com" };
         var respond = new UserResponseDto { Id = 1, Role = "Manager", FirstName = "F", LastName = "L", Email = "e@x.com" };
         _userContextService.GetUserAsync().Returns(editor);
@@ -253,6 +269,7 @@ public class UserServiceTests
         Assert.Equal(UserRole.Manager, employee.Role);
         Assert.Equal(editor.Id, employee.UpdatedBy);
         Assert.NotNull(result);
+        await _auth0ManagementService.Received(1).SyncUserRoleAsync(employee.Auth0UserId, UserRole.Manager);
     }
 
     [Fact]
@@ -269,12 +286,15 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task DeleteEmployee_Throws_WhenUserIsCustomer()
+    public async Task DeleteEmployee_DeletesCustomer_WhenExists()
     {
         var employee = new User { Id = 3, Role = UserRole.Customer };
         _userRepository.GetByIdAsync(employee.Id).Returns(employee);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _userService.DeleteEmployee(employee.Id));
+        var result = await _userService.DeleteEmployee(employee.Id);
+
+        Assert.True(result);
+        _userRepository.Received(1).Remove(employee);
     }
 
     [Fact]
@@ -306,8 +326,6 @@ public class UserServiceTests
 
         Assert.Equal(userDto, result);
         Assert.Equal(editor.Id, user.UpdatedBy);
-        Assert.NotNull(user.PasswordHash);
-        Assert.True(user.IsVerified);
         await _userRepository.Received(1).AddAsync(user);
         await _userRepository.Received(1).SaveChangesAsync();
     }
@@ -334,33 +352,8 @@ public class UserServiceTests
         // Assert
         Assert.Equal(mappedDto, result);
         Assert.Equal(editor.Id, user.UpdatedBy);
-        Assert.True(user.IsVerified);
-        Assert.False(string.IsNullOrEmpty(user.PasswordHash));
-        Assert.StartsWith("$2", user.PasswordHash); // BCrypt marker
         await _userRepository.Received(1).AddAsync(user);
         await _userRepository.Received(1).SaveChangesAsync();
-    }
-
-    [Fact]
-    public async Task CreateNewEmployee_GeneratesEightCharPassword()
-    {
-        // Arrange
-        var dto = new RegisterEmployeeDetailDto { FirstName = "P", LastName = "T", Email = "p@t.com", Role = "Employee" };
-        var user = new User { Email = dto.Email };
-        var editor = new User { Id = 5, Role = UserRole.Admin };
-
-        _mapper.Map<User>(dto).Returns(user);
-        _userContextService.GetUserAsync().Returns(editor);
-        _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
-        _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
-        _mapper.Map<UserResponseDto>(user).Returns(new UserResponseDto { FirstName = "P", LastName = "T", Email = "p@t.com", Role = "Employee" });
-
-        // Act
-        await _userService.CreateNewEmployee(dto);
-
-        // Assert
-        Assert.NotNull(user.PasswordHash);
-        Assert.StartsWith("$2", user.PasswordHash); // BCrypt hash
     }
 
     [Fact]
@@ -373,6 +366,123 @@ public class UserServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => _userService.CreateNewEmployee(dto));
+    }
+
+    [Fact]
+    public async Task SyncCurrentUserMetadataAsync_SyncsMetadata_WhenUserExists()
+    {
+        // Arrange
+        var user = new User { Id = 1, Auth0UserId = "auth0|user123", StoreId = 5 };
+        _userContextService.GetUserAsync().Returns(user);
+
+        // Act
+        var result = await _userService.SyncCurrentUserMetadataAsync();
+
+        // Assert
+        Assert.True(result);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
+    }
+
+    [Fact]
+    public async Task SyncCurrentUserMetadataAsync_SyncsMetadata_WhenUserHasNoStore()
+    {
+        // Arrange
+        var user = new User { Id = 1, Auth0UserId = "auth0|user456", StoreId = null };
+        _userContextService.GetUserAsync().Returns(user);
+
+        // Act
+        var result = await _userService.SyncCurrentUserMetadataAsync();
+
+        // Assert
+        Assert.True(result);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(user.Auth0UserId, user.Id, user.StoreId);
+    }
+
+    [Fact]
+    public async Task GetUserById_ThrowsKeyNotFoundException_WhenUserNotFound()
+    {
+        // Arrange
+        _userRepository.GetByIdAsync(999).Returns((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _userService.GetUserById(999));
+    }
+
+    [Fact]
+    public async Task UpdateEmployee_SyncsUserMetadata_AfterRoleUpdate()
+    {
+        // Arrange
+        var editor = new User { Id = 99, Role = UserRole.Admin };
+        var employee = new User { Id = 1, Role = UserRole.Employee, Auth0UserId = "auth0|emp-upd", StoreId = 1 };
+        var dto = new UpdateEmployeeDto { Id = 1, Role = "Admin", FirstName = "F", LastName = "L", Email = "e@x.com" };
+        var respond = new UserResponseDto { Id = 1, Role = "Admin", FirstName = "F", LastName = "L", Email = "e@x.com" };
+
+        _userContextService.GetUserAsync().Returns(editor);
+        _userRepository.GetByIdAsync(dto.Id).Returns(employee);
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(respond);
+
+        // Act
+        var result = await _userService.UpdateEmployee(dto);
+
+        // Assert
+        Assert.NotNull(result);
+        await _auth0ManagementService.Received(1).SyncUserMetadataAsync(employee.Auth0UserId, employee.Id, employee.StoreId);
+    }
+
+    [Fact]
+    public async Task DeleteEmployee_Throws_WhenEmployeeNotFound()
+    {
+        // Arrange
+        _userRepository.GetByIdAsync(999).Returns((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.DeleteEmployee(999));
+    }
+
+    [Fact]
+    public async Task GetEmployees_CallsRepositoryWithCorrectStoreId()
+    {
+        // Arrange
+        var user = new User { Id = 1, Role = UserRole.Manager, StoreId = 5 };
+        var employees = new List<User> { new() { Id = 2, Role = UserRole.Employee } };
+        var employeeDtos = new List<UserResponseDto>
+        {
+            new() { Id = 2, Role = "Employee", FirstName = "Test", LastName = "Emp", Email = "test@emp.com" }
+        };
+
+        _userContextService.GetUserAsync().Returns(user);
+        _userRepository.GetAllEmployee(5).Returns(employees);
+        _mapper.Map<List<UserResponseDto>>(employees).Returns(employeeDtos);
+
+        // Act
+        var result = await _userService.GetEmployees();
+
+        // Assert
+        Assert.Equal(employeeDtos, result);
+        await _userRepository.Received(1).GetAllEmployee(5);
+    }
+
+    [Fact]
+    public async Task Register_SendsEmailNotification_WhenEmployeeCreated()
+    {
+        // Arrange
+        var dto = new RegisterEmployeeDetailDto { FirstName = "Test", LastName = "Emp", Email = "test@emp.com", Role = "Employee" };
+        var user = new User { Id = 1, Email = dto.Email };
+        var editor = new User { Id = 99 };
+        var userDto = new UserResponseDto { Id = 1, Email = dto.Email, FirstName = "Test", LastName = "Emp", Role = "Employee" };
+
+        _mapper.Map<User>(dto).Returns(user);
+        _userContextService.GetUserAsync().Returns(editor);
+        _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
+        _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
+        _mapper.Map<UserResponseDto>(user).Returns(userDto);
+
+        // Act
+        var result = await _userService.CreateNewEmployee(dto);
+
+        // Assert
+        Assert.NotNull(result);
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u => u.Email == dto.Email));
     }
 }
 

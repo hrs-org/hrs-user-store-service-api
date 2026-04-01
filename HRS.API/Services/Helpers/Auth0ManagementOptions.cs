@@ -7,6 +7,8 @@ public class Auth0ManagementOptions
     public string ClientId { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
 
+    public string Connection { get; set; } = "Username-Password-Authentication";
+
     public string CustomerRoleId { get; set; } = string.Empty;
     public string OwnerRoleId { get; set; } = string.Empty;
     public string EmployeeRoleId { get; set; } = string.Empty;

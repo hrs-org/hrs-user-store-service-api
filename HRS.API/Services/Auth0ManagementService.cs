@@ -177,6 +177,65 @@ public class Auth0ManagementService : IAuth0ManagementService
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _cachedAccessToken);
     }
 
+    public async Task<string> CreateUserAsync(string email, string firstName, string lastName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email is required", nameof(email));
+
+        ValidateOptions();
+        await AuthenticateClientAsync(cancellationToken);
+
+        var createUserResponse = await _httpClient.PostAsJsonAsync(
+            "users",
+            new
+            {
+                email,
+                given_name = firstName,
+                family_name = lastName,
+                connection = _options.Connection,
+                password = $"Tmp!{Guid.NewGuid():N}",
+                email_verified = false,
+                verify_email = false
+            },
+            cancellationToken);
+
+        if (!createUserResponse.IsSuccessStatusCode)
+        {
+            var body = await createUserResponse.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError(
+                "Failed to create Auth0 user for {Email}. Status={StatusCode}. Body={Body}",
+                email, (int)createUserResponse.StatusCode, body);
+            createUserResponse.EnsureSuccessStatusCode();
+        }
+
+        await using var createStream = await createUserResponse.Content.ReadAsStreamAsync(cancellationToken);
+        using var createJson = await JsonDocument.ParseAsync(createStream, cancellationToken: cancellationToken);
+
+        if (!createJson.RootElement.TryGetProperty("user_id", out var userIdElement))
+            throw new InvalidOperationException("Auth0 create user response missing user_id");
+
+        var auth0UserId = userIdElement.GetString()
+            ?? throw new InvalidOperationException("Auth0 create user response has empty user_id");
+
+        var ticketResponse = await _httpClient.PostAsJsonAsync(
+            "tickets/password-change",
+            new { user_id = auth0UserId, mark_email_as_verified = true, ttl_sec = 86400 },
+            cancellationToken);
+
+        if (!ticketResponse.IsSuccessStatusCode)
+        {
+            var body = await ticketResponse.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError(
+                "Failed to create password-change ticket for Auth0 user {Auth0UserId}. Status={StatusCode}. Body={Body}",
+                auth0UserId, (int)ticketResponse.StatusCode, body);
+            ticketResponse.EnsureSuccessStatusCode();
+        }
+
+        _logger.LogInformation("Auth0 user created and password-change ticket issued for {Email}", email);
+
+        return auth0UserId;
+    }
+
     private void ValidateOptions()
     {
         if (string.IsNullOrWhiteSpace(_options.Domain) ||

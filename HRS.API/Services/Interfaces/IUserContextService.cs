@@ -10,4 +10,8 @@ public interface IUserContextService
     Task<UserResponseDto> GetUserDtoAsync();
 
     Task<int> GetUserIdAsync();
+
+    string GetAuth0Id();
+
+    Task<User?> GetUserByAuth0IdAsync();
 }

@@ -592,6 +592,16 @@ jobs:
             - name: Pull and run Docker image
               env:
                   IMAGE_TAG: ${{ needs.docker-build.outputs.image-tag }}
+                  AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+                  AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
+                  AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
+                  AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
+                  AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
+                  AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_OWNER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_OWNER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID }}
+                  AUTH0_MANAGEMENT_MANAGER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_MANAGER_ROLE_ID }}
+                  AUTH0_MANAGEMENT_ADMIN_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_ADMIN_ROLE_ID }}
               run: |
                   CERT_DIR="$RUNNER_TEMP/dast-cert"
                   CERT_PATH="$CERT_DIR/dast.pfx"
@@ -635,9 +645,16 @@ jobs:
                     -e ASPNETCORE_Kestrel__Certificates__Default__Path="/https/dast.pfx" \
                     -e ASPNETCORE_Kestrel__Certificates__Default__Password="$CERT_PASSWORD" \
                     -e ConnectionStrings__DefaultConnection="${{ secrets.DB_CONNECTION_STRING || 'Server=localhost;Database=hrsdb;' }}" \
-                    -e Jwt__Key="${{ secrets.JWT_SECRET_KEY }}" \
-                    -e Jwt__Issuer="HRSApp" \
-                    -e Jwt__Audience="HRSUsers" \
+                    -e Auth0__Domain="$AUTH0_DOMAIN" \
+                    -e Auth0__Audience="$AUTH0_AUDIENCE" \
+                    -e Auth0Management__Domain="$AUTH0_MANAGEMENT_DOMAIN" \
+                    -e Auth0Management__ClientId="$AUTH0_MANAGEMENT_CLIENT_ID" \
+                    -e Auth0Management__ClientSecret="$AUTH0_MANAGEMENT_CLIENT_SECRET" \
+                    -e Auth0Management__CustomerRoleId="$AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID" \
+                    -e Auth0Management__OwnerRoleId="$AUTH0_MANAGEMENT_OWNER_ROLE_ID" \
+                    -e Auth0Management__EmployeeRoleId="$AUTH0_MANAGEMENT_EMPLOYEE_ROLE_ID" \
+                    -e Auth0Management__ManagerRoleId="$AUTH0_MANAGEMENT_MANAGER_ROLE_ID" \
+                    -e Auth0Management__AdminRoleId="$AUTH0_MANAGEMENT_ADMIN_ROLE_ID" \
                     -e AllowedOrigins="${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}" \
                     -e EmailEndpoint="http://localhost:5001" \
                     -v "$CERT_PATH:/https/dast.pfx:ro" \

@@ -172,12 +172,25 @@ builder.Services.AddCors(options =>
     );
 });
 
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+    options.Preload = true;
+    options.ExcludedHosts.Clear();
+});
+
 // Add health checks
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

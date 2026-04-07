@@ -18,8 +18,6 @@ public class UserServiceTests
     private readonly IUserContextService _userContextService;
     private readonly IUserRepository _userRepository;
     private readonly UserService _userService;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly HttpClient _httpClient;
 
     public UserServiceTests()
     {
@@ -27,13 +25,8 @@ public class UserServiceTests
         _auth0ManagementService = Substitute.For<IAuth0ManagementService>();
         _userRepository = Substitute.For<IUserRepository>();
         _userContextService = Substitute.For<IUserContextService>();
-        _httpClientFactory = Substitute.For<IHttpClientFactory>();
 
-        var handler = new FakeHttpMessageHandler();
-        _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
-        _httpClientFactory.CreateClient("EmailService").Returns(_httpClient);
-
-        _userService = new UserService(_mapper, _auth0ManagementService, _userRepository, _userContextService, _httpClientFactory);
+        _userService = new UserService(_mapper, _auth0ManagementService, _userRepository, _userContextService);
     }
 
     [Fact]

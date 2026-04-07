@@ -1,7 +1,4 @@
-﻿using System;
-using System.Net;
-using System.Net.Http;
-using AutoMapper;
+﻿using AutoMapper;
 using NSubstitute;
 using Xunit;
 using HRS.API.Services;
@@ -19,8 +16,6 @@ public class StoreServiceTests
     private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly HttpClient _httpClient;
     private readonly StoreService _storeService;
     private readonly IUserContextService _userContextService;
 
@@ -30,19 +25,13 @@ public class StoreServiceTests
         _auth0ManagementService = Substitute.For<IAuth0ManagementService>();
         _userRepository = Substitute.For<IUserRepository>();
         _mapper = Substitute.For<IMapper>();
-        _httpClientFactory = Substitute.For<IHttpClientFactory>();
         _userContextService = Substitute.For<IUserContextService>();
-
-        var handler = new FakeHttpMessageHandler();
-        _httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
-        _httpClientFactory.CreateClient("EmailService").Returns(_httpClient);
 
         _storeService = new StoreService(
             _storeRepository,
             _auth0ManagementService,
             _userRepository,
             _mapper,
-            _httpClientFactory,
             _userContextService
         );
     }

@@ -300,7 +300,6 @@ public class UserServiceTests
             Email = "newemployee@mail.com",
             Role = "Employee"
         };
-        var user = new User { Id = 4 };
         var editor = new User { Id = 99, Role = UserRole.Admin };
         var userDto = new UserResponseDto
         {
@@ -311,15 +310,15 @@ public class UserServiceTests
             Role = "Employee"
         };
 
-        _mapper.Map<User>(dto).Returns(user);
+        _auth0ManagementService.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>()).Returns("auth0|new-4");
         _userContextService.GetUserAsync().Returns(editor);
-        _mapper.Map<UserResponseDto>(user).Returns(userDto);
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(userDto);
 
         var result = await _userService.CreateNewEmployee(dto);
 
         Assert.Equal(userDto, result);
-        Assert.Equal(editor.Id, user.UpdatedBy);
-        await _userRepository.Received(1).AddAsync(user);
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u =>
+            u.Email == dto.Email.Trim() && u.UpdatedBy == editor.Id));
         await _userRepository.Received(1).SaveChangesAsync();
     }
 
@@ -328,24 +327,21 @@ public class UserServiceTests
     {
         // Arrange
         var dto = new RegisterEmployeeDetailDto { FirstName = "New", LastName = "Emp", Email = "new@e.com", Role = "Employee" };
-        var user = new User { Id = 10 };
         var editor = new User { Id = 99, Role = UserRole.Admin };
         var mappedDto = new UserResponseDto { Id = 10, FirstName = "New", LastName = "Emp", Email = "new@e.com", Role = "Employee" };
 
-        _mapper.Map<User>(dto).Returns(user);
+        _auth0ManagementService.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>()).Returns("auth0|new-10");
         _userContextService.GetUserAsync().Returns(editor);
         _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
         _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
-        _mapper.Map<UserResponseDto>(user).Returns(mappedDto);
-
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(mappedDto);
 
         // Act
         var result = await _userService.CreateNewEmployee(dto);
 
         // Assert
         Assert.Equal(mappedDto, result);
-        Assert.Equal(editor.Id, user.UpdatedBy);
-        await _userRepository.Received(1).AddAsync(user);
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u => u.UpdatedBy == editor.Id));
         await _userRepository.Received(1).SaveChangesAsync();
     }
 
@@ -460,22 +456,21 @@ public class UserServiceTests
     {
         // Arrange
         var dto = new RegisterEmployeeDetailDto { FirstName = "Test", LastName = "Emp", Email = "test@emp.com", Role = "Employee" };
-        var user = new User { Id = 1, Email = dto.Email };
         var editor = new User { Id = 99 };
         var userDto = new UserResponseDto { Id = 1, Email = dto.Email, FirstName = "Test", LastName = "Emp", Role = "Employee" };
 
-        _mapper.Map<User>(dto).Returns(user);
+        _auth0ManagementService.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>()).Returns("auth0|test-emp");
         _userContextService.GetUserAsync().Returns(editor);
         _userRepository.AddAsync(Arg.Any<User>()).Returns(Task.CompletedTask);
         _userRepository.SaveChangesAsync().Returns(Task.FromResult(0));
-        _mapper.Map<UserResponseDto>(user).Returns(userDto);
+        _mapper.Map<UserResponseDto>(Arg.Any<User>()).Returns(userDto);
 
         // Act
         var result = await _userService.CreateNewEmployee(dto);
 
         // Assert
         Assert.NotNull(result);
-        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u => u.Email == dto.Email));
+        await _userRepository.Received(1).AddAsync(Arg.Is<User>(u => u.Email == dto.Email.Trim()));
     }
 }
 

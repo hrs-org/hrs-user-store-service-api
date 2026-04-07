@@ -154,9 +154,9 @@ public class UserService : IUserService
         };
 
         await _userRepository.AddAsync(user);
+        await _auth0ManagementService.SyncUserRoleAsync(auth0UserId, role);
         await _userRepository.SaveChangesAsync();
 
-        await _auth0ManagementService.SyncUserRoleAsync(auth0UserId, role);
         await _auth0ManagementService.SyncUserMetadataAsync(auth0UserId, user.Id, user.StoreId);
 
         return _mapper.Map<UserResponseDto>(user);

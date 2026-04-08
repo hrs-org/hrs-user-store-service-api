@@ -31,11 +31,6 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.Configure<Auth0ManagementOptions>(builder.Configuration.GetSection("Auth0Management"));
 
-builder.Services.AddHttpClient("EmailService", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["EmailEndpoint"]!);
-});
-
 builder.Services.AddHttpClient("Auth0ManagementApi", client =>
 {
     var domain = builder.Configuration["Auth0Management:Domain"];

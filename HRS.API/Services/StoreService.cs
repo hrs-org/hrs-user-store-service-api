@@ -13,7 +13,6 @@ public class StoreService : IStoreService
     private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
-    private readonly HttpClient _httpClient;
     private readonly IUserContextService _userContextService;
 
     public StoreService(
@@ -21,14 +20,12 @@ public class StoreService : IStoreService
         IAuth0ManagementService auth0ManagementService,
         IUserRepository userRepository,
         IMapper mapper,
-        IHttpClientFactory httpClientFactory,
         IUserContextService userContextService)
     {
         _storeRepository = storeRepository;
         _auth0ManagementService = auth0ManagementService;
         _userRepository = userRepository;
         _mapper = mapper;
-        _httpClient = httpClientFactory.CreateClient("EmailService");
         _userContextService = userContextService;
     }
 

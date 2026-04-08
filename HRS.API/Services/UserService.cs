@@ -14,20 +14,17 @@ public class UserService : IUserService
     private readonly IAuth0ManagementService _auth0ManagementService;
     private readonly IUserContextService _userContextService;
     private readonly IUserRepository _userRepository;
-    private readonly HttpClient _httpClient;
 
     public UserService(
         IMapper mapper,
         IAuth0ManagementService auth0ManagementService,
         IUserRepository userRepository,
-        IUserContextService userContextService,
-        IHttpClientFactory httpClientFactory)
+        IUserContextService userContextService)
     {
         _mapper = mapper;
         _auth0ManagementService = auth0ManagementService;
         _userRepository = userRepository;
         _userContextService = userContextService;
-        _httpClient = httpClientFactory.CreateClient("EmailService");
     }
 
     public async Task<IEnumerable<UserResponseDto>> GetUsers()
@@ -134,23 +131,33 @@ public class UserService : IUserService
 
     public async Task<UserResponseDto> CreateNewEmployee(RegisterEmployeeDetailDto dto)
     {
-        var user = _mapper.Map<User>(dto);
         var editor = await _userContextService.GetUserAsync();
-        user.CreatedAt = DateTime.UtcNow;
-        user.UpdatedAt = DateTime.UtcNow;
-        user.UpdatedBy = editor.Id;
-        user.StoreId = editor.StoreId;
+
+        var auth0UserId = await _auth0ManagementService.CreateUserAsync(
+            dto.Email.Trim(),
+            dto.FirstName.Trim(),
+            dto.LastName.Trim());
+
+        var role = Enum.Parse<UserRole>(dto.Role, ignoreCase: true);
+
+        var user = new User
+        {
+            Auth0UserId = auth0UserId,
+            FirstName = dto.FirstName.Trim(),
+            LastName = dto.LastName.Trim(),
+            Email = dto.Email.Trim(),
+            Role = role,
+            StoreId = editor.StoreId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = editor.Id
+        };
 
         await _userRepository.AddAsync(user);
+        await _auth0ManagementService.SyncUserRoleAsync(auth0UserId, role);
         await _userRepository.SaveChangesAsync();
 
-        var sendEmployeeWelcomeEmailRequest = new
-        {
-            Email = user.Email,
-            FirstName = user.FirstName
-        };
-        var response = await _httpClient.PostAsJsonAsync("/api/email/send-employee-welcome", sendEmployeeWelcomeEmailRequest);
-        response.EnsureSuccessStatusCode();
+        await _auth0ManagementService.SyncUserMetadataAsync(auth0UserId, user.Id, user.StoreId);
 
         return _mapper.Map<UserResponseDto>(user);
     }

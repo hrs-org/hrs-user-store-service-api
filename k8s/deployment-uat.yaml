@@ -1,3 +1,13 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: hrs-user-service-sa
+    namespace: __NAMESPACE__
+    labels:
+        app: hrs-user-service
+        environment: uat
+
+automountServiceAccountToken: false
 ---
 # HRS User Store Service Deployment
 apiVersion: apps/v1

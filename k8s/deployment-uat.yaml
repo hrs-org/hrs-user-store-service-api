@@ -55,6 +55,8 @@ spec:
                       # Auth0 Management API (for server-to-server)
                       - name: Auth0Management__Domain
                         value: "__AUTH0_MANAGEMENT_DOMAIN__"
+                      - name: Auth0Management__Audience
+                        value: "__AUTH0_MANAGEMENT_AUDIENCE__"
                       - name: Auth0Management__ClientId
                         value: "__AUTH0_MANAGEMENT_CLIENT_ID__"
                       - name: Auth0Management__ClientSecret

@@ -113,7 +113,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnTokenValidated = async context =>
             {
-                var claims = context.Principal?.Claims.ToList() ?? new List<Claim>();
+                var claims = context.Principal?.Claims.ToList() ?? [];
                 var subClaim = claims.FirstOrDefault(c => c.Type == "sub");
                 if (subClaim != null && !claims.Any(c => c.Type == ClaimTypes.NameIdentifier))
                 {
@@ -126,32 +126,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Add authorization with scope-based policies
-builder.Services.AddAuthorization(options =>
-{
+builder.Services.AddAuthorizationBuilder()
     // User management scopes
-    options.AddPolicy("read:user", policy =>
-        policy.Requirements.Add(new PermissionRequirement("read:user")));
-    options.AddPolicy("write:user", policy =>
-        policy.Requirements.Add(new PermissionRequirement("write:user")));
-    options.AddPolicy("delete:user", policy =>
-        policy.Requirements.Add(new PermissionRequirement("delete:user")));
-
+    .AddPolicy("read:user", policy =>
+        policy.Requirements.Add(new PermissionRequirement("read:user")))
+    .AddPolicy("write:user", policy =>
+        policy.Requirements.Add(new PermissionRequirement("write:user")))
+    .AddPolicy("delete:user", policy =>
+        policy.Requirements.Add(new PermissionRequirement("delete:user")))
     // Store management scopes
-    options.AddPolicy("read:store", policy =>
-        policy.Requirements.Add(new PermissionRequirement("read:store")));
-    options.AddPolicy("write:store", policy =>
-        policy.Requirements.Add(new PermissionRequirement("write:store")));
-
+    .AddPolicy("read:store", policy =>
+        policy.Requirements.Add(new PermissionRequirement("read:store")))
+    .AddPolicy("write:store", policy =>
+        policy.Requirements.Add(new PermissionRequirement("write:store")))
     // Employee management scopes
-    options.AddPolicy("read:employee", policy =>
-        policy.Requirements.Add(new PermissionRequirement("read:employee")));
-    options.AddPolicy("update:employee", policy =>
-        policy.Requirements.Add(new PermissionRequirement("update:employee")));
-    options.AddPolicy("delete:employee", policy =>
-        policy.Requirements.Add(new PermissionRequirement("delete:employee")));
-    options.AddPolicy("write:employee", policy =>
+    .AddPolicy("read:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("read:employee")))
+    .AddPolicy("update:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("update:employee")))
+    .AddPolicy("delete:employee", policy =>
+        policy.Requirements.Add(new PermissionRequirement("delete:employee")))
+    .AddPolicy("write:employee", policy =>
         policy.Requirements.Add(new PermissionRequirement("write:employee")));
-});
 
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 

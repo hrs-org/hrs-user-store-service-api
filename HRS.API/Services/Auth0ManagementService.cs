@@ -217,21 +217,30 @@ public class Auth0ManagementService : IAuth0ManagementService
         var auth0UserId = userIdElement.GetString()
             ?? throw new InvalidOperationException("Auth0 create user response has empty user_id");
 
-        var ticketResponse = await _httpClient.PostAsJsonAsync(
-            "tickets/password-change",
-            new { user_id = auth0UserId, mark_email_as_verified = true, ttl_sec = 86400 },
+        var resetClientId = string.IsNullOrWhiteSpace(_options.PasswordResetClientId)
+            ? _options.ClientId
+            : _options.PasswordResetClientId;
+
+        var resetEmailResponse = await _httpClient.PostAsJsonAsync(
+            $"https://{_options.Domain}/dbconnections/change_password",
+            new
+            {
+                client_id = resetClientId,
+                email,
+                connection = _options.Connection
+            },
             cancellationToken);
 
-        if (!ticketResponse.IsSuccessStatusCode)
+        if (!resetEmailResponse.IsSuccessStatusCode)
         {
-            var body = await ticketResponse.Content.ReadAsStringAsync(cancellationToken);
+            var body = await resetEmailResponse.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogError(
-                "Failed to create password-change ticket for Auth0 user {Auth0UserId}. Status={StatusCode}. Body={Body}",
-                auth0UserId, (int)ticketResponse.StatusCode, body);
-            ticketResponse.EnsureSuccessStatusCode();
+                "Failed to send Auth0 password reset email for user {Auth0UserId}. Status={StatusCode}. Body={Body}",
+                auth0UserId, (int)resetEmailResponse.StatusCode, body);
+            resetEmailResponse.EnsureSuccessStatusCode();
         }
 
-        _logger.LogInformation("Auth0 user created and password-change ticket issued for {Email}", email);
+        _logger.LogInformation("Auth0 user created and password reset email triggered for {Email}", email);
 
         return auth0UserId;
     }

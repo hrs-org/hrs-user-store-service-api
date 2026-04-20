@@ -133,19 +133,31 @@ public class UserService : IUserService
     {
         var editor = await _userContextService.GetUserAsync();
 
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            throw new ArgumentException("Email is required");
+
+        var normalizedEmail = dto.Email.Trim();
+        var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail);
+        if (existingUser != null)
+            throw new InvalidOperationException("User with this email already exists");
+
+        if (!Enum.TryParse<UserRole>(dto.Role, ignoreCase: true, out var role) ||
+            (role != UserRole.Employee && role != UserRole.Manager && role != UserRole.Admin))
+        {
+            throw new ArgumentException("Invalid role specified.");
+        }
+
         var auth0UserId = await _auth0ManagementService.CreateUserAsync(
-            dto.Email.Trim(),
+            normalizedEmail,
             dto.FirstName.Trim(),
             dto.LastName.Trim());
-
-        var role = Enum.Parse<UserRole>(dto.Role, ignoreCase: true);
 
         var user = new User
         {
             Auth0UserId = auth0UserId,
             FirstName = dto.FirstName.Trim(),
             LastName = dto.LastName.Trim(),
-            Email = dto.Email.Trim(),
+            Email = normalizedEmail,
             Role = role,
             StoreId = editor.StoreId,
             CreatedAt = DateTime.UtcNow,

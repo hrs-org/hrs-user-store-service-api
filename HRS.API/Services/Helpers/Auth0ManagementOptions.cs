@@ -6,6 +6,7 @@ public class Auth0ManagementOptions
     public string Audience { get; set; } = string.Empty;
     public string ClientId { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
+    public string PasswordResetClientId { get; set; } = string.Empty;
 
     public string Connection { get; set; } = "Username-Password-Authentication";
 

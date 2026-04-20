@@ -105,6 +105,7 @@ jobs:
                   AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
                   AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
                   AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
+                  AUTH0_MANAGEMENT_AUDIENCE: ${{ secrets.AUTH0_MANAGEMENT_AUDIENCE }}
                   AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
                   AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
                   AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
@@ -115,7 +116,7 @@ jobs:
               run: |
                   missing=0
 
-                  for name in DB_CONNECTION_STRING MYSQL_ROOT_PASSWORD MYSQL_USER_PASSWORD AUTH0_DOMAIN AUTH0_AUDIENCE AUTH0_MANAGEMENT_DOMAIN AUTH0_MANAGEMENT_CLIENT_ID AUTH0_MANAGEMENT_CLIENT_SECRET; do
+                  for name in DB_CONNECTION_STRING MYSQL_ROOT_PASSWORD MYSQL_USER_PASSWORD AUTH0_DOMAIN AUTH0_AUDIENCE AUTH0_MANAGEMENT_DOMAIN AUTH0_MANAGEMENT_AUDIENCE AUTH0_MANAGEMENT_CLIENT_ID AUTH0_MANAGEMENT_CLIENT_SECRET; do
                     if [ -z "${!name}" ]; then
                       echo "❌ Missing required GitHub secret: $name"
                       missing=1
@@ -145,6 +146,7 @@ jobs:
                   AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
                   AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
                   AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
+                  AUTH0_MANAGEMENT_AUDIENCE: ${{ secrets.AUTH0_MANAGEMENT_AUDIENCE }}
                   AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
                   AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
                   AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
@@ -170,6 +172,7 @@ jobs:
                   sed "s|__AUTH0_DOMAIN__|$AUTH0_DOMAIN|g" | \
                   sed "s|__AUTH0_AUDIENCE__|$AUTH0_AUDIENCE|g" | \
                   sed "s|__AUTH0_MANAGEMENT_DOMAIN__|$AUTH0_MANAGEMENT_DOMAIN|g" | \
+                  sed "s|__AUTH0_MANAGEMENT_AUDIENCE__|$AUTH0_MANAGEMENT_AUDIENCE|g" | \
                   sed "s|__AUTH0_MANAGEMENT_CLIENT_ID__|$AUTH0_MANAGEMENT_CLIENT_ID|g" | \
                   sed "s|__AUTH0_MANAGEMENT_CLIENT_SECRET__|$AUTH0_MANAGEMENT_CLIENT_SECRET|g" | \
                   sed "s|__AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID__|$AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID|g" | \

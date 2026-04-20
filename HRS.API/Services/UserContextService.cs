@@ -31,7 +31,7 @@ public class UserContextService : IUserContextService
     public string GetAuth0Id()
     {
         var principal = _httpContextAccessor.HttpContext?.User;
-        if (principal?.Identity?.IsAuthenticated != true)
+        if (principal?.Identity?.IsAuthenticated is not true)
             throw new UnauthorizedAccessException("User is not authenticated");
 
         return principal.FindFirstValue("sub")

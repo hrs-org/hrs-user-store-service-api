@@ -362,6 +362,8 @@ jobs:
               env:
                   DB_CONNECTION_STRING: "Server=host.docker.internal;Port=3306;Database=${{ env.PREDAST_DB_NAME }};User=${{ env.PREDAST_DB_USER }};Password=${{ env.PREDAST_DB_PASSWORD }};"
                   ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}
+                  AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+                  AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
               run: |
                   CERT_DIR="$RUNNER_TEMP/predast-cert"
                   CERT_PATH="$CERT_DIR/predast.pfx"
@@ -387,8 +389,8 @@ jobs:
                     -e ASPNETCORE_Kestrel__Certificates__Default__Path="/https/predast.pfx" \
                     -e ASPNETCORE_Kestrel__Certificates__Default__Password="$CERT_PASSWORD" \
                     -e ConnectionStrings__DefaultConnection="$DB_CONNECTION_STRING" \
-                    -e Auth0__Domain="${{ secrets.AUTH0_DOMAIN }}" \
-                    -e Auth0__Audience="${{ secrets.AUTH0_AUDIENCE }}" \
+                    -e Auth0__Domain="$AUTH0_DOMAIN" \
+                    -e Auth0__Audience="$AUTH0_AUDIENCE" \
                     -e AllowedOrigins="$ALLOWED_ORIGINS" \
                     -v "$CERT_PATH:/https/predast.pfx:ro" \
                     pre-dast-user-service:latest

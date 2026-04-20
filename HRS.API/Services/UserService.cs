@@ -151,7 +151,7 @@ public class UserService : IUserService
             normalizedEmail,
             dto.FirstName.Trim(),
             dto.LastName.Trim());
-        
+
         var user = new User
         {
             Auth0UserId = auth0UserId,

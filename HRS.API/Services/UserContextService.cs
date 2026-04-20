@@ -31,15 +31,9 @@ public class UserContextService : IUserContextService
     public string GetAuth0Id()
     {
         var principal = _httpContextAccessor.HttpContext?.User;
-        if (principal?.Identity?.IsAuthenticated != true)
-            throw new UnauthorizedAccessException("User is not authenticated");
-
-        var auth0Id = principal.FindFirstValue("sub");
-
-        if (string.IsNullOrEmpty(auth0Id))
-            throw new UnauthorizedAccessException("Auth0 ID (sub claim) not found in token");
-
-        return auth0Id;
+        return principal?.Identity?.IsAuthenticated is true
+            ? principal.FindFirstValue("sub") ?? throw new UnauthorizedAccessException("Auth0 ID (sub claim) not found in token")
+            : throw new UnauthorizedAccessException("User is not authenticated");
     }
 
     public async Task<User?> GetUserByAuth0IdAsync()

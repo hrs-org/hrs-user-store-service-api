@@ -58,10 +58,8 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-RUN apk update && apk upgrade --no-cache libcrypto3 openssl
-
-# Create non-root user with high UID
-RUN adduser --disabled-password --gecos '' --uid 10007 appuser && chown -R appuser /app
+RUN apk update && apk upgrade --no-cache libcrypto3 openssl \
+    && adduser --disabled-password --gecos '' --uid 10007 appuser && chown -R appuser /app
 USER appuser
 
 # Set environment variable to listen on port 8080 (non-privileged port)

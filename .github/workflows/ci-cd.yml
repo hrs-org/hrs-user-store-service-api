@@ -204,7 +204,7 @@ jobs:
 
             - name: Security audit
               run: |
-                  dotnet list HRS.Gateway/HRS.Gateway.csproj package --vulnerable --include-transitive | tee security-audit.txt
+                  dotnet list HikingRentalStore.sln package --vulnerable --include-transitive | tee security-audit.txt
                   if grep -q "Severity: High" security-audit.txt; then exit 1; fi
 
             - name: Upload security scan results
@@ -358,12 +358,6 @@ jobs:
                   PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
               run: docker build --secret id=github_packages_token,env=PACKAGES_READ_TOKEN -t pre-dast-user-service:latest -f ./Dockerfile .
 
-            - name: Generate temporary JWT key for pre-DAST
-              run: |
-                  JWT_TMP_KEY=$(openssl rand -base64 48 | tr -d '\n')
-                  echo "::add-mask::$JWT_TMP_KEY"
-                  echo "JWT_SECRET_KEY=$JWT_TMP_KEY" >> "$GITHUB_ENV"
-
             - name: Run Docker image locally
               env:
                   DB_CONNECTION_STRING: "Server=host.docker.internal;Port=3306;Database=${{ env.PREDAST_DB_NAME }};User=${{ env.PREDAST_DB_USER }};Password=${{ env.PREDAST_DB_PASSWORD }};"
@@ -393,11 +387,9 @@ jobs:
                     -e ASPNETCORE_Kestrel__Certificates__Default__Path="/https/predast.pfx" \
                     -e ASPNETCORE_Kestrel__Certificates__Default__Password="$CERT_PASSWORD" \
                     -e ConnectionStrings__DefaultConnection="$DB_CONNECTION_STRING" \
-                    -e Jwt__Key="$JWT_SECRET_KEY" \
-                    -e Jwt__Issuer="HRSApp" \
-                    -e Jwt__Audience="HRSUsers" \
+                    -e Auth0__Domain="${{ secrets.AUTH0_DOMAIN }}" \
+                    -e Auth0__Audience="${{ secrets.AUTH0_AUDIENCE }}" \
                     -e AllowedOrigins="$ALLOWED_ORIGINS" \
-                    -e EmailEndpoint="http://localhost:5001" \
                     -v "$CERT_PATH:/https/predast.pfx:ro" \
                     pre-dast-user-service:latest
 
@@ -595,7 +587,6 @@ jobs:
                   AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
                   AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
                   AUTH0_MANAGEMENT_DOMAIN: ${{ secrets.AUTH0_MANAGEMENT_DOMAIN }}
-                  AUTH0_MANAGEMENT_AUDIENCE: ${{ secrets.AUTH0_MANAGEMENT_AUDIENCE }}
                   AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_ID }}
                   AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MANAGEMENT_CLIENT_SECRET }}
                   AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID: ${{ vars.AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID }}
@@ -649,7 +640,6 @@ jobs:
                     -e Auth0__Domain="$AUTH0_DOMAIN" \
                     -e Auth0__Audience="$AUTH0_AUDIENCE" \
                     -e Auth0Management__Domain="$AUTH0_MANAGEMENT_DOMAIN" \
-                    -e Auth0Management__Audience="$AUTH0_MANAGEMENT_AUDIENCE" \
                     -e Auth0Management__ClientId="$AUTH0_MANAGEMENT_CLIENT_ID" \
                     -e Auth0Management__ClientSecret="$AUTH0_MANAGEMENT_CLIENT_SECRET" \
                     -e Auth0Management__CustomerRoleId="$AUTH0_MANAGEMENT_CUSTOMER_ROLE_ID" \
@@ -658,7 +648,6 @@ jobs:
                     -e Auth0Management__ManagerRoleId="$AUTH0_MANAGEMENT_MANAGER_ROLE_ID" \
                     -e Auth0Management__AdminRoleId="$AUTH0_MANAGEMENT_ADMIN_ROLE_ID" \
                     -e AllowedOrigins="${{ secrets.ALLOWED_ORIGINS || 'http://localhost:4200' }}" \
-                    -e EmailEndpoint="http://localhost:5001" \
                     -v "$CERT_PATH:/https/dast.pfx:ro" \
                     ${{ secrets.ACR_NAME }}.azurecr.io/hrs-user-service:${IMAGE_TAG}
 

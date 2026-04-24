@@ -204,7 +204,7 @@ jobs:
 
             - name: Security audit
               run: |
-                  dotnet list HRS.Gateway/HRS.Gateway.csproj package --vulnerable --include-transitive | tee security-audit.txt
+                  dotnet list HikingRentalStore.sln package --vulnerable --include-transitive | tee security-audit.txt
                   if grep -q "Severity: High" security-audit.txt; then exit 1; fi
 
             - name: Upload security scan results

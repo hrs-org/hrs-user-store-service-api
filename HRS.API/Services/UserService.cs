@@ -95,7 +95,6 @@ public class UserService : IUserService
         var editor = await _userContextService.GetUserAsync();
         var employee = await _userRepository.GetByIdAsync(dto.Id);
         if (employee == null) throw new KeyNotFoundException("User not found.");
-        // if (employee.Role == UserRole.Customer) throw new InvalidOperationException("Cannot update a customer to an employee.");
 
         if (Enum.TryParse<UserRole>(dto.Role, true, out var parsedRole) &&
             (parsedRole == UserRole.Employee || parsedRole == UserRole.Manager || parsedRole == UserRole.Admin))
@@ -122,7 +121,6 @@ public class UserService : IUserService
     public async Task<bool> DeleteEmployee(int id)
     {
         var employee = await _userRepository.GetByIdAsync(id) ?? throw new KeyNotFoundException("User not found.");
-        // if (employee.Role == UserRole.Customer) throw new InvalidOperationException("Cannot delete a customer as an employee.");
 
         _userRepository.Remove(employee);
         await _userRepository.SaveChangesAsync();

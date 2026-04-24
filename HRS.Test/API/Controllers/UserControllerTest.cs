@@ -276,6 +276,7 @@ public class UsersControllerTests
         Assert.NotNull(okResult);
         var response = okResult.Value as ApiResponse<List<UserResponseDto>>;
         Assert.NotNull(response);
+        Assert.NotNull(response.Data);
         Assert.Equal(2, response.Data.Count);
     }
 
@@ -294,6 +295,7 @@ public class UsersControllerTests
         Assert.NotNull(okResult);
         var response = okResult.Value as ApiResponse<UserResponseDto>;
         Assert.NotNull(response);
+        Assert.NotNull(response.Data);
         Assert.Equal(user.Id, response.Data.Id);
     }
 

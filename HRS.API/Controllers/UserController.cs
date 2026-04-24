@@ -8,6 +8,7 @@ namespace HRS.API.Controllers;
 
 [ApiController]
 [Route("api/users")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "S6960", Justification = "User and employee operations share the same service layer and are intentionally co-located.")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;

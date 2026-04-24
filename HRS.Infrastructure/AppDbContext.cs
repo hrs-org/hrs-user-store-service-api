@@ -11,9 +11,4 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; } = default!;
     public DbSet<Store> Stores { get; set; } = default!;
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-    }
 }

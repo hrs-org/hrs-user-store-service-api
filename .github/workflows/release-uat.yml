@@ -491,12 +491,71 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
+            - name: Set up Azure CLI
+              uses: azure/login@cb79c773a3cfa27f31f25eb3f677781210c9ce3d
+              with:
+                  creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+            - name: Set up kubectl
+              uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8
+              with:
+                  version: "latest"
+
+            - name: Get AKS credentials
+              run: |
+                  az aks get-credentials \
+                    --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                    --name ${{ env.AKS_CLUSTER_NAME }} \
+                    --overwrite-existing
+
+            - name: Get User Service endpoint from AKS
+              id: gateway
+              run: |
+                  echo "Retrieving user service endpoint..."
+
+                  SERVICE_IP=$(kubectl get service ${{ env.SERVICE_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+                  if [ -z "$SERVICE_IP" ]; then
+                    echo "User service doesn't have LoadBalancer IP, trying ClusterIP..."
+                    SERVICE_IP=$(kubectl get service ${{ env.SERVICE_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.clusterIP}')
+                  fi
+
+                  if [ -z "$SERVICE_IP" ]; then
+                    echo "Failed to retrieve user service IP"
+                    exit 1
+                  fi
+
+                  SERVICE_ENDPOINT="http://${SERVICE_IP}"
+                  echo "User service endpoint: $SERVICE_ENDPOINT"
+                  echo "endpoint=$SERVICE_ENDPOINT" >> $GITHUB_OUTPUT
+
             - name: OWASP ZAP Baseline Scan
               uses: zaproxy/action-baseline@99b9334bed0a0ff8d797764e76c9ecae53168436 # v0.10.0
               with:
-                  target: ${{ secrets.UAT_API_ENDPOINT }}
+                  target: ${{ steps.gateway.outputs.endpoint }}
                   rules_file_name: ".zap/rules.tsv"
                   cmd_options: "-a -j -l WARN -T 10 -I"
+
+            - name: Check for HIGH and CRITICAL vulnerabilities
+              if: always()
+              run: |
+                  if [ ! -f report_json.json ]; then
+                    echo "⚠️ ZAP report not found, skipping severity check"
+                    exit 0
+                  fi
+
+                  echo "Checking for HIGH and CRITICAL severity vulnerabilities..."
+
+                  # ZAP riskcode: 0=Info, 1=Low, 2=Medium, 3=High
+                  HIGH_CRITICAL=$(jq '[.site[].alerts[] | select(.riskcode == "3")] | length' report_json.json)
+
+                  if [ "$HIGH_CRITICAL" -gt 0 ]; then
+                    echo "❌ Found $HIGH_CRITICAL HIGH severity vulnerability(ies)"
+                    jq -r '.site[].alerts[] | select(.riskcode == "3") | "[\(.risk)] \(.name) - \(.desc[0:100])..."' report_json.json
+                    exit 1
+                  else
+                    echo "✅ No HIGH severity vulnerabilities found"
+                  fi
 
             - name: Upload DAST scan results
               uses: actions/upload-artifact@v4
@@ -518,13 +577,14 @@ jobs:
                   echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
                   echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
                   echo "| **Tool** | OWASP ZAP Baseline |" >> $GITHUB_STEP_SUMMARY
-                  echo "| **Target** | UAT API Endpoint |" >> $GITHUB_STEP_SUMMARY
+                  echo "| **Target** | User Service (\`${{ steps.gateway.outputs.endpoint }}\`) |" >> $GITHUB_STEP_SUMMARY
+                  echo "| **Severity Filter** | HIGH only (blocks pipeline) |" >> $GITHUB_STEP_SUMMARY
                   echo "| **Environment** | \`${{ github.event.inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
                   echo "| **Version** | \`${{ github.event.inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
 
                   if [ "${{ job.status }}" == "success" ]; then
-                    echo "### ✅ Status: No blocking security issues found" >> $GITHUB_STEP_SUMMARY
+                    echo "### ✅ Status: No HIGH severity issues found" >> $GITHUB_STEP_SUMMARY
                   else
-                    echo "### ❌ Status: Security issues detected — review DAST report artifact" >> $GITHUB_STEP_SUMMARY
+                    echo "### ❌ Status: HIGH severity issues detected — review DAST report artifact" >> $GITHUB_STEP_SUMMARY
                   fi
